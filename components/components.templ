@@ -1,0 +1,87 @@
+package components
+
+import (
+	"github.com/HannesOberreiter/gbif-extinct/internal"
+	"fmt"
+)
+
+type TableRows []internal.TableRow
+
+templ TableTh(columnName string, orderBy string, payload internal.Payload) {
+	if payload.ORDER_BY != nil && *payload.ORDER_BY == orderBy {
+		if payload.ORDER_DIR != nil && *payload.ORDER_DIR == "asc" {
+			<th class="text-left font-black cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "desc")  }> { columnName }</th>
+		} else {
+			<th class="text-left font-black cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "asc") }> { columnName }</th>
+		}
+	} else {
+		<th class="text-left cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "desc") }> { columnName }</th>
+	}
+}
+
+templ Table(rows TableRows, payload internal.Payload) {
+    <div id="tableContainer" class="overflow-x-auto w-full">
+        <table class="w-full caption-bottom text-nowrap">
+            <thead class="">
+                <tr>
+					@TableTh("Scientific Name", "name", payload)
+					<th class="text-left">Country</th>
+					<th class="text-left">Country</th>
+					@TableTh("Latest Observation", "date", payload)
+					<th class="text-left">Time since (years)</th>
+					<th class="text-left">Taxa</th>
+					@TableTh("Last Fetched", "fetch", payload)
+                </tr>
+            </thead>
+            <tbody>
+			    for _, row := range rows {
+                	<tr class="">
+                        <td class="text-left">
+							<a class="italic" href={ templ.URL("https://www.gbif.org/species/" + row.TaxonID)} target="_blank">{ row.ScientificName.String }</a>
+						</td>
+						<td class="text-left">
+							{ row.CountryCodeClean } { row.CountryFlag }
+						</td>
+                        <td class="text-center"> 
+							if row.ObservationDate.Valid {
+								<a href={ templ.URL("https://www.gbif.org/occurrence/" + row.ObservationID)} target="_blank">{ row.ObservationDate.Time.Format("2006-01-02") }</a>
+							} else {
+								{ "n/a" }
+							}
+						</td>
+						<td class="text-right">
+							{ row.ObservedDiff }
+						</td>
+						<td class="text-left">
+							{ row.Taxa }
+						</td>
+						<td class="text-center"> 
+							if row.LastFetch.Valid {
+								{ row.LastFetch.Time.Format("2006-01-02") }
+							} else {
+								{ "not yet" }
+							}
+						</td>
+                	</tr>
+				}
+            </tbody>
+        </table>
+    </div>
+}
+
+templ Page(rows TableRows, payload internal.Payload) {
+	<html>
+		<head>
+			<meta charset="UTF-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+			<title>GBIF - Latest Observation</title>
+            <link href="/assets/main.css" rel="stylesheet" />
+			<script src="/assets/js/htmx.min.js" />
+		</head>
+		<body class="prose">
+			<main class="container-fluid mx-auto px-4">
+				@Table(rows, payload)
+			</main>
+		</body>
+	</html>
+}
