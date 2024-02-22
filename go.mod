@@ -9,8 +9,13 @@ require (
 )
 
 require (
+	github.com/go-co-op/gocron v1.37.0 // indirect
+	github.com/go-co-op/gocron/v2 v2.2.4 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 )
 
 require (
@@ -20,6 +25,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect

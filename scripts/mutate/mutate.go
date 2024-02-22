@@ -82,7 +82,12 @@ func populateTaxa() {
 		if fields[11] != "species" {
 			continue
 		}
-		if fields[17] != "Animalia" {
+
+		if fields[7] == "" { // Empty species name
+			continue
+		}
+
+		if fields[17] != "Animalia" && fields[17] != "Plantae" {
 			continue
 		}
 
@@ -93,6 +98,11 @@ func populateTaxa() {
 			slog.Info("Inserting batch records", "count", len(tempArray))
 			insert(&tempArray)
 		}
+	}
+
+	if len(tempArray) > 0 {
+		slog.Info("Inserting last batch records", "count", len(tempArray))
+		insert(&tempArray)
 	}
 
 	if err := scanner.Err(); err != nil {

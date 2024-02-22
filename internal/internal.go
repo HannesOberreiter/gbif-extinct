@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,12 +97,14 @@ func cleanDate(date string) string {
 // UpdateLastFetchStatus updates the last fetch status for a taxon
 // this function should be called before updating the observations for a taxon
 // The LastFetch column is used to determine if a taxon should be fetched at random by the GetOutdatedObservations function
-func UpdateLastFetchStatus(taxonID string) {
+func UpdateLastFetchStatus(taxonID string) bool {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := DB.Exec("UPDATE taxa SET LastFetch = ? WHERE TaxonID = ?", now, taxonID)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Failed to update last fetch status", "error", err)
+		return false
 	}
+	return true
 }
 
 // Helper function to get outdated observations at random
@@ -112,7 +115,7 @@ func GetOutdatedObservations() []string {
 		SELECT TaxonID 
 		FROM taxa  
 		WHERE 6 > date_diff('month', today(), LastFetch) OR LastFetch IS NULL 
-		USING SAMPLE 10 ROWS`)
+		USING SAMPLE 5 ROWS`)
 	var taxonIDs []string
 	if err != nil {
 		slog.Error("Failed to get outdated observations", "error", err)
@@ -130,6 +133,38 @@ func GetOutdatedObservations() []string {
 	return taxonIDs
 }
 
+type Counts struct {
+	TaxaCount        int
+	ObservationCount int
+}
+
+func GetCounts(payload Payload) Counts {
+	var err error
+	var taxaCount int
+	var observationCount int
+
+	observationQuery := sq.Select("COUNT(*)").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.TaxonID")
+	createFilterQuery(&observationQuery, payload)
+	err = observationQuery.RunWith(DB).QueryRow().Scan(&observationCount)
+	if err != nil {
+		slog.Error("Failed to get observation count", "error", err)
+	}
+
+	if payload.COUNTRY != nil && *payload.COUNTRY != "" {
+		taxaCount = observationCount // There should be only one taxa per observation per country
+	} else {
+		taxaQuery := sq.Select("COUNT(*)").From("taxa")
+		createFilterQuery(&taxaQuery, payload)
+		err = taxaQuery.RunWith(DB).QueryRow().Scan(&taxaCount)
+		if err != nil {
+			slog.Error("Failed to get taxa count", "error", err)
+		}
+	}
+
+	counts := Counts{taxaCount, observationCount}
+	return counts
+}
+
 type TableRow struct {
 	TaxonID          string
 	ScientificName   sql.NullString
@@ -137,29 +172,54 @@ type TableRow struct {
 	CountryCodeClean string
 	CountryFlag      string
 	LastFetch        sql.NullTime
-	ObservationID    string
+	ObservationID    sql.NullString
 	ObservationDate  sql.NullTime
 	ObservedDiff     string
 
-	TaxonKingdom sql.NullString
-	TaxonPhylum  sql.NullString
-	TaxonClass   sql.NullString
-	TaxonOrder   sql.NullString
-	TaxonFamily  sql.NullString
+	TaxonKingdom string
+	TaxonPhylum  string
+	TaxonClass   string
+	TaxonOrder   string
+	TaxonFamily  string
 	Taxa         string
 }
 
 type Payload struct {
 	ORDER_BY  *string `query:"order_by"`
 	ORDER_DIR *string `query:"order_dir"`
+	SEARCH    *string `query:"search"`
+	COUNTRY   *string `query:"country"`
+	RANK      *string `query:"rank"`
+	TAXA      *string `query:"taxa"`
+	PAGE      *string `query:"page"`
+}
+
+var taxonRankMap = map[string]string{"kingdom": "TaxonKingdom", "phylum": "TaxonPhylum", "class": "TaxonClass", "order": "TaxonOrder", "family": "TaxonFamily"}
+
+func createFilterQuery(query *sq.SelectBuilder, payload Payload) {
+	if payload.SEARCH != nil && *payload.SEARCH != "" {
+		*query = query.Where(sq.ILike{"ScientificName": "%" + *payload.SEARCH + "%"})
+	}
+	if payload.COUNTRY != nil && *payload.COUNTRY != "" {
+		*query = query.Where(sq.Eq{"CountryCode": strings.ToUpper(*payload.COUNTRY)})
+	}
+
+	if payload.RANK != nil && *payload.RANK != "" {
+		if payload.TAXA != nil && *payload.TAXA != "" {
+			if taxonRankMap[strings.ToLower(*payload.RANK)] != "" {
+				slog.Info("Rank", "rank", taxonRankMap[strings.ToLower(*payload.RANK)])
+				*query = query.Where(sq.ILike{taxonRankMap[strings.ToLower(*payload.RANK)]: *payload.TAXA + "%"})
+			}
+		}
+	}
+
 }
 
 func GetTableData(payload Payload) []TableRow {
-
-	slog.Info("Payload", "payload", payload)
+	limit := uint64(100)
 
 	query := sq.Select("taxa.TaxonID", "ScientificName", "CountryCode", "LastFetch", "ObservationID", "ObservationDate",
-		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily").From("taxa").Join("observations ON observations.TaxonID = taxa.TaxonID").Limit(100)
+		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily").From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.TaxonID").Limit(limit)
 
 	var direction string
 	if payload.ORDER_DIR == nil || *payload.ORDER_DIR == "asc" {
@@ -176,6 +236,18 @@ func GetTableData(payload Payload) []TableRow {
 		query = query.OrderBy("LastFetch " + direction)
 	}
 
+	if payload.PAGE != nil && *payload.PAGE != "" {
+		page, err := strconv.ParseInt(*payload.PAGE, 0, 64)
+		if err != nil {
+			slog.Error("Failed to parse page", "error", err)
+		} else {
+			offset := limit * (uint64(page) - 1)
+			query = query.Offset(offset)
+		}
+	}
+
+	createFilterQuery(&query, payload)
+
 	rows, err := query.RunWith(DB).Query()
 
 	var result []TableRow
@@ -187,21 +259,18 @@ func GetTableData(payload Payload) []TableRow {
 		var row TableRow
 		err = rows.Scan(&row.TaxonID, &row.ScientificName, &row.CountryCode, &row.LastFetch, &row.ObservationID, &row.ObservationDate, &row.TaxonKingdom, &row.TaxonPhylum, &row.TaxonClass, &row.TaxonOrder, &row.TaxonFamily)
 
+		taxonFields := []string{row.TaxonKingdom, row.TaxonPhylum, row.TaxonClass, row.TaxonOrder, row.TaxonFamily}
 		row.Taxa = ""
-		if row.TaxonKingdom.Valid {
-			row.Taxa += row.TaxonKingdom.String
-		}
-		if row.TaxonPhylum.Valid {
-			row.Taxa += ", " + row.TaxonPhylum.String
-		}
-		if row.TaxonClass.Valid {
-			row.Taxa += ", " + row.TaxonClass.String
-		}
-		if row.TaxonOrder.Valid {
-			row.Taxa += ", " + row.TaxonOrder.String
-		}
-		if row.TaxonFamily.Valid {
-			row.Taxa += ", " + row.TaxonFamily.String
+
+		for i, field := range taxonFields {
+			if field != "" {
+				row.Taxa += field
+			} else {
+				row.Taxa += "N/A"
+			}
+			if i != len(taxonFields)-1 {
+				row.Taxa += ", "
+			}
 		}
 
 		if row.ObservationDate.Valid {
@@ -226,7 +295,7 @@ func GetTableData(payload Payload) []TableRow {
 
 func calculateTimeSinceYears(t time.Time) string {
 	years := time.Since(t).Hours() / 24 / 365
-	return fmt.Sprintf("~%.2f", years)
+	return fmt.Sprintf("%.1f", years)
 }
 
 func countryCodeToFlag(x string) (country, flag string) {
@@ -235,6 +304,9 @@ func countryCodeToFlag(x string) (country, flag string) {
 	}
 	if x[0] < 'A' || x[0] > 'Z' || x[1] < 'A' || x[1] > 'Z' {
 		return x, ""
+	}
+	if x[0] == 'Z' && x[1] == 'Z' {
+		return x, "🏴‍☠️"
 	}
 	return x, " " + string('🇦'+rune(x[0])-'A') + string('🇦'+rune(x[1])-'A')
 }

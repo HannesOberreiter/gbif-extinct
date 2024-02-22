@@ -2,35 +2,106 @@ package components
 
 import (
 	"github.com/HannesOberreiter/gbif-extinct/internal"
-	"fmt"
+    "golang.org/x/text/message"
 )
+
+var printer = message.NewPrinter(message.MatchLanguage("en"))
 
 type TableRows []internal.TableRow
 
+// Intercept helper function to call main.js setSortingFields to update the form and submit it
+script setSortingFields(orderBy string, orderDir string) {
+	window['setSortingFields'](orderBy, orderDir);
+}
+
+// Refresh filter simply by redirecting to the base URL
+script baseUrl() {
+	window.location = window.location.origin;
+}
+
+
+// Utility to create a table header with sorting
 templ TableTh(columnName string, orderBy string, payload internal.Payload) {
 	if payload.ORDER_BY != nil && *payload.ORDER_BY == orderBy {
 		if payload.ORDER_DIR != nil && *payload.ORDER_DIR == "asc" {
-			<th class="text-left font-black cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "desc")  }> { columnName }</th>
+			<th class="text-left font-black cursor-pointer" onclick={ setSortingFields(orderBy, "desc") }> { columnName } ↓</th>
 		} else {
-			<th class="text-left font-black cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "asc") }> { columnName }</th>
+			<th class="text-left font-black cursor-pointer" onclick={ setSortingFields(orderBy, "asc") }> { columnName } ↑</th>
 		}
 	} else {
-		<th class="text-left cursor-pointer" hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="click" hx-vals={ fmt.Sprintf(`{"order_by": "%s", "order_dir": "%s"}`, orderBy, "desc") }> { columnName }</th>
+		<th class="text-left cursor-pointer" onclick={ setSortingFields(orderBy, "desc") }> { columnName } ↕</th>
 	}
 }
 
-templ Table(rows TableRows, payload internal.Payload) {
-    <div id="tableContainer" class="overflow-x-auto w-full">
+// Form containing our filters for the table
+templ Filter(){
+  	<form id="filterForm" class="w-full " hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-trigger="submit, filterSubmit from:body">
+	  	<div class="flex flex-wrap -mx-3 mb-2">
+			<!-- Scientific Name -->
+	    	<div class="w-full md:w-1/2 lg:w-1/4 px-3 mb-3 md:mb-0">
+      			<label class="block uppercase tracking-wide text-gray-500 text-xs font-bold mb-2" for="species">
+        			Species
+      			</label>
+      			<input class="block w-full py-1 mb-3" id="species" type="text" placeholder="Scientific name" name="search" />
+    		</div>
+			<!-- Country -->
+	    	<div class="w-full md:w-1/2 lg:w-1/4 px-3 mb-3 md:mb-0">
+      			<label class="block uppercase tracking-wide text-gray-500 text-xs font-bold mb-2" for="country">
+        			Country
+      			</label>
+      			<input class="block w-full py-1 mb-3" id="country" type="text" placeholder="2-Letter ISO" name="country" />
+    		</div>
+			<!-- Select Rank -->
+			<div class="w-full md:w-1/2 lg:w-1/4 px-3 mb-3 md:mb-0">
+      			<label class="block uppercase tracking-wide text-gray-500 text-xs font-bold mb-2" for="rank">
+        			Taxa Rank
+      			</label>
+      			<select class="block w-full py-1 mb-3" id="rank" name="rank">
+					<option value="kingdom">Kingdom</option>
+					<option value="phylum">Phylum</option>
+					<option value="class">Class</option>
+					<option value="order">Order</option>
+					<option value="family">Family</option>
+				</select>
+    		</div>
+			<!-- Filter based on rank, taxa -->
+	    	<div class="w-full md:w-1/2 lg:w-1/4 px-3 mb-3 md:mb-0">
+      			<label class="block uppercase tracking-wide text-gray-500 text-xs font-bold mb-2" for="taxa">
+        			Taxa
+      			</label>
+      			<input class="block w-full py-1 mb-3" id="taxa" type="text" placeholder="Based on rank" name="taxa" />
+    		</div>
+			<!-- Hidden fields for sorting -->
+			<input hidden name="order_by" value="date"/>
+			<input hidden name="order_dir" value="asc"/>
+		</div>
+
+		<button class="uppercase tracking-wide hover:font-bold" type="submit">
+    		Apply filter
+		</button>
+		 | 
+		<button class="uppercase tracking-wide hover:font-bold" onclick={ baseUrl() }>
+    		Clear
+		</button>
+	</form>
+}
+
+templ Table(rows TableRows, payload internal.Payload, counts internal.Counts) {
+    <div id="tableContainer" class="w-full">
+		<small>
+			<span>Taxa: { printer.Sprintln(counts.TaxaCount) }</span>
+			<span> | </span>
+			<span>Observations: { printer.Sprintln(counts.ObservationCount) }</span>
+		</small>
         <table class="w-full caption-bottom text-nowrap">
             <thead class="">
                 <tr>
 					@TableTh("Scientific Name", "name", payload)
 					<th class="text-left">Country</th>
-					<th class="text-left">Country</th>
 					@TableTh("Latest Observation", "date", payload)
-					<th class="text-left">Time since (years)</th>
-					<th class="text-left">Taxa</th>
+					<th class="text-left">~Years</th>
 					@TableTh("Last Fetched", "fetch", payload)
+					<th class="text-left">Taxa</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,8 +114,8 @@ templ Table(rows TableRows, payload internal.Payload) {
 							{ row.CountryCodeClean } { row.CountryFlag }
 						</td>
                         <td class="text-center"> 
-							if row.ObservationDate.Valid {
-								<a href={ templ.URL("https://www.gbif.org/occurrence/" + row.ObservationID)} target="_blank">{ row.ObservationDate.Time.Format("2006-01-02") }</a>
+							if row.ObservationDate.Valid && row.ObservationID.Valid {
+								<a href={ templ.URL("https://www.gbif.org/occurrence/" + row.ObservationID.String)} target="_blank">{ row.ObservationDate.Time.Format("2006-01-02") }</a>
 							} else {
 								{ "n/a" }
 							}
@@ -52,24 +123,83 @@ templ Table(rows TableRows, payload internal.Payload) {
 						<td class="text-right">
 							{ row.ObservedDiff }
 						</td>
-						<td class="text-left">
-							{ row.Taxa }
-						</td>
-						<td class="text-center"> 
+						<td class="text-center cursor-pointer" hx-get="/fetch" hx-vals={ `{"taxonID":"` + row.TaxonID + `"}` } hx-disable-elt="this" hx-indicator=".loading" hx-confirm="Try to fetch latest observation from GBIF? Warning this could take for common taxa more than a hour.">
+							<span class="underline loading show">
 							if row.LastFetch.Valid {
 								{ row.LastFetch.Time.Format("2006-01-02") }
 							} else {
 								{ "not yet" }
 							}
+							</span>
+							<span class="loading hide">
+								Loading...
+							</span>
+
+						</td>
+						<td class="text-left">
+							{ row.Taxa }
 						</td>
                 	</tr>
 				}
             </tbody>
         </table>
+		<!-- Pagination -->
+		<div class="flex flex-row justify-between">
+			<div>
+				<button class="uppercase tracking-wide hover:font-bold"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page": 1}` }>
+					First
+				</button>
+			</div>
+
+			<div>
+				<button class="uppercase tracking-wide hover:font-bold"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page": 2}` }>
+					2
+				</button>
+			</div>
+		</div>
+
     </div>
 }
 
-templ Page(rows TableRows, payload internal.Payload) {
+// Index landing page with table
+templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts){
+		@Page() {
+			<div class="p-4">
+    			<section>
+					@Filter()
+    			</section>
+				<hr class="mt-1 mb-1" />
+    			<main>
+					@Table(rows, payload, counts)
+    			</main>
+			</div>
+		}
+}
+
+// About page
+templ PageAbout(){
+	@Page() {
+		<div class="p-4">
+			About
+
+			lorem isopsum
+
+			## Table Columns
+
+			- **Scientific Name**: The scientific name of the species
+			- **Country**: The 2-letter ISO country code
+			- **Latest Observation**: The date of the latest observation, if only a year/month is given the first month / day of the month is used. Additionally ranges are ignored and only the first date is used
+			- **~Years**: The difference in years between the latest observation and the current date, calculated without leap years
+			- **Last Fetched**: The date when the data was last fetched from GBIF
+
+
+		</div>
+	}
+
+}
+
+// Main Page table wrapped around pages
+templ Page() {
 	<html>
 		<head>
 			<meta charset="UTF-8"/>
@@ -78,10 +208,19 @@ templ Page(rows TableRows, payload internal.Payload) {
             <link href="/assets/main.css" rel="stylesheet" />
 			<script src="/assets/js/htmx.min.js" />
 		</head>
-		<body class="prose">
-			<main class="container-fluid mx-auto px-4">
-				@Table(rows, payload)
-			</main>
+		<body class="prose font-mono">
+			{ children... }
+
+			<footer class="footer">
+				<div class="flex flex-row px-1 bg-gray-900 text-xs justify-between">
+					<a href="/" class="text-white">GBIF - Latest Observation</a>
+					<a href="/about" class="text-white">About</a>
+					<a href="https://github.com/HannesOberreiter/gbif-extinct" target="_blank" class="text-white">GitHub gbif-extinct</a>
+					<a href="https://www.gbif.org/" target="_blank" class="text-white">Data from GBIF</a>
+				</div>
+			</footer>
+
 		</body>
 	</html>
+	<script src="/assets/js/main.js" />
 }

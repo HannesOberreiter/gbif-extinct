@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
+        "ctx",
         "gbif",
+        "gocron",
         "sqlite",
         "templ"
     ]
