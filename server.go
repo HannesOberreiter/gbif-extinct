@@ -42,7 +42,7 @@ func main() {
 		OnTimeoutRouteErrorHandler: func(err error, c echo.Context) {
 			slog.Warn("Timeout", "path", c.Path())
 		},
-		Timeout: 60 * 60 * time.Second,
+		Timeout: 15 * 60 * time.Second,
 	}))
 
 	/* Start cron scheduler */
@@ -56,11 +56,12 @@ func main() {
 		}
 	}()
 
+	/* Graceful shutdown */
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	slog.Info("Server shutdown")
 
 	<-ctx.Done()
+	slog.Info("Server shutdown")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := scheduler.Shutdown(); err != nil {
