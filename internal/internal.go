@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HannesOberreiter/gbif-extinct/pkg"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/marcboeker/go-duckdb"
 )
@@ -39,7 +39,7 @@ func loadDb() {
 // SaveObservation saves the latest observation for each taxon
 // It first clears the old observations for each taxon before inserting the new ones
 // to improve performance each insert contains alls new observations for this taxa at once
-func SaveObservation(observation [][]pkg.LatestObservation, conn *sql.Conn, ctx context.Context) {
+func SaveObservation(observation [][]gbif.LatestObservation, conn *sql.Conn, ctx context.Context) {
 	slog.Info("Updating observations", "taxa", len(observation))
 	const stmt = "INSERT INTO observations (ObservationID, TaxonID, CountryCode, ObservationDate, ObservationDateOriginal) VALUES"
 	for _, res := range observation {
@@ -47,7 +47,7 @@ func SaveObservation(observation [][]pkg.LatestObservation, conn *sql.Conn, ctx 
 		slog.Info("Inserting new for taxaId", "observations", len(res), "taxaId", res[0].TaxonID)
 		clearOldObservations(conn, ctx, res[0].TaxonID)
 		for _, obs := range res {
-			insertString = append(insertString, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s')", obs.ObservationID, obs.TaxonID, obs.CountryCode, cleanDate(obs.ObservationDate), obs.ObservationDate))
+			insertString = append(insertString, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s')", obs.ObservationID, obs.TaxonID, obs.CountryCode, obs.ObservationDate, obs.ObservationOriginalDate))
 		}
 		query := stmt + strings.Join(insertString, ",") + " ON CONFLICT DO NOTHING;"
 		_, err := conn.ExecContext(ctx, query)
@@ -64,33 +64,6 @@ func clearOldObservations(conn *sql.Conn, ctx context.Context, taxonID string) {
 	_, err := conn.ExecContext(ctx, "DELETE FROM observations WHERE TaxonID = ?", taxonID)
 	if err != nil {
 		slog.Error("Database error on clearing old observations", err)
-	}
-}
-
-// Clean observation date to be in the format of YYYY-MM-DD
-func cleanDate(date string) string {
-	if date == "" {
-		return ""
-	}
-
-	var dateParts []string
-	if strings.Contains(date, "/") {
-		dateParts = strings.Split(date, "/")
-	} else {
-		dateParts = []string{date}
-	}
-
-	// Remove time if it exists
-	dateParts = strings.Split(dateParts[0], " ")
-	dateParts = strings.Split(dateParts[0], "T")
-
-	dateParts = strings.Split(dateParts[0], "-")
-	if len(dateParts) == 1 {
-		return dateParts[0] + "-01-01"
-	} else if len(dateParts) == 2 {
-		return dateParts[0] + "-" + dateParts[1] + "-01"
-	} else {
-		return dateParts[0] + "-" + dateParts[1] + "-" + dateParts[2]
 	}
 }
 
@@ -215,11 +188,12 @@ func createFilterQuery(query *sq.SelectBuilder, payload Payload) {
 
 }
 
+const PageLimit = uint64(100)
+
 func GetTableData(payload Payload) []TableRow {
-	limit := uint64(100)
 
 	query := sq.Select("taxa.TaxonID", "ScientificName", "CountryCode", "LastFetch", "ObservationID", "ObservationDate",
-		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily").From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.TaxonID").Limit(limit)
+		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily").From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.TaxonID").Limit(PageLimit)
 
 	var direction string
 	if payload.ORDER_DIR == nil || *payload.ORDER_DIR == "asc" {
@@ -241,7 +215,7 @@ func GetTableData(payload Payload) []TableRow {
 		if err != nil {
 			slog.Error("Failed to parse page", "error", err)
 		} else {
-			offset := limit * (uint64(page) - 1)
+			offset := PageLimit * (uint64(page) - 1)
 			query = query.Offset(offset)
 		}
 	}

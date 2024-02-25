@@ -2,6 +2,7 @@ package components
 
 import (
 	"github.com/HannesOberreiter/gbif-extinct/internal"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/pagination"
     "golang.org/x/text/message"
 )
 
@@ -86,7 +87,37 @@ templ Filter(){
 	</form>
 }
 
-templ Table(rows TableRows, payload internal.Payload, counts internal.Counts) {
+templ Pagination(pages pagination.PagesString){
+	<div class="flex flex-row">
+		<div>
+			<button class="uppercase tracking-wide hover:font-bold pr-sm"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page":1}` }>
+				First
+			</button>
+		</div>
+		|
+		<div>
+			<button class="uppercase tracking-wide hover:font-bold pr-sm"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page":` + pages.PREVIOUS + `}` }  disabled?={ pages.CURRENT == pages.PREVIOUS }>
+				Previous
+			</button>
+		</div>
+		|
+		<div>
+			<button class="uppercase tracking-wide hover:font-bold pr-sm"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page":` + pages.NEXT + `}` } disabled?={ pages.CURRENT == pages.LAST }>
+				if pages.CURRENT == pages.LAST {
+					Last
+				} else {
+					Next
+				}
+			</button>
+		</div>
+		
+	</div>
+
+}
+
+
+
+templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pages pagination.PagesString) {
     <div id="tableContainer" class="w-full">
 		<small>
 			<span>Taxa: { printer.Sprintln(counts.TaxaCount) }</span>
@@ -123,7 +154,7 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts) {
 						<td class="text-right">
 							{ row.ObservedDiff }
 						</td>
-						<td class="text-center cursor-pointer" hx-get="/fetch" hx-vals={ `{"taxonID":"` + row.TaxonID + `"}` } hx-disable-elt="this" hx-indicator=".loading" hx-confirm="Try to fetch latest observation from GBIF? Warning this could take for common taxa more than a hour.">
+						<td class="text-center cursor-pointer" hx-get="/fetch" hx-vals={ `{"taxonID":"` + row.TaxonID + `"}` } hx-disable-elt="this" hx-indicator=".loading" hx-confirm="Try to fetch latest observation from GBIF? Warning this may take a while for taxa with lots of observations in different countries.">
 							<span class="underline loading show">
 							if row.LastFetch.Valid {
 								{ row.LastFetch.Time.Format("2006-01-02") }
@@ -144,25 +175,14 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts) {
             </tbody>
         </table>
 		<!-- Pagination -->
-		<div class="flex flex-row justify-between">
-			<div>
-				<button class="uppercase tracking-wide hover:font-bold"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page": 1}` }>
-					First
-				</button>
-			</div>
-
-			<div>
-				<button class="uppercase tracking-wide hover:font-bold"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page": 2}` }>
-					2
-				</button>
-			</div>
-		</div>
-
+		if pages.LAST != "1" {
+			@Pagination(pages)
+		}
     </div>
 }
 
 // Index landing page with table
-templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts){
+templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts, pages pagination.PagesString){
 		@Page() {
 			<div class="p-4">
     			<section>
@@ -170,7 +190,7 @@ templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts
     			</section>
 				<hr class="mt-1 mb-1" />
     			<main>
-					@Table(rows, payload, counts)
+					@Table(rows, payload, counts, pages)
     			</main>
 			</div>
 		}
@@ -205,7 +225,7 @@ templ Page() {
 			<meta charset="UTF-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 			<title>GBIF - Latest Observation</title>
-            <link href="/assets/main.css" rel="stylesheet" />
+            <link href="/assets/css/main.css" rel="stylesheet" />
 			<script src="/assets/js/htmx.min.js" />
 		</head>
 		<body class="prose font-mono">

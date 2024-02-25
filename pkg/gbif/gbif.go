@@ -1,4 +1,4 @@
-package pkg
+package gbif
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -156,10 +157,11 @@ func getCountries(taxonID string, years []int) map[string]string {
 }
 
 type LatestObservation struct {
-	ObservationID   string
-	ObservationDate string
-	CountryCode     string
-	TaxonID         string
+	ObservationID           string
+	ObservationOriginalDate string
+	ObservationDate         string
+	CountryCode             string
+	TaxonID                 string
 }
 
 // FetchLatest fetches the latest observations of a taxon from the GBIF API
@@ -179,6 +181,8 @@ func FetchLatest(taxonID string) []LatestObservation {
 		var observations []LatestObservation
 		for {
 			offset := i * limit
+			i++
+
 			var response Response
 			fetchUrl := baseUrl + "&year=" + year + "&country=" + key + "&offset=" + fmt.Sprint(offset)
 			body := internalFetch(fetchUrl)
@@ -187,22 +191,50 @@ func FetchLatest(taxonID string) []LatestObservation {
 				break
 			}
 			json.Unmarshal(body, &response)
+			breakEarly := false
+
 			if response.Count < 0 {
 				slog.Info("No more rows found for given taxa", "taxonID", taxonID)
 				break
 			} else {
 				for _, result := range response.Results {
+
+					if len(result.EventDate) < 4 {
+						continue
+					}
+
+					cleanDate := cleanDate(result.EventDate)
+
+					if len(observations) > 1 && cleanDate <= observations[len(observations)-1].ObservationDate {
+						continue
+					}
+
 					observations = append(observations, LatestObservation{
-						ObservationID:   fmt.Sprint(result.Key),
-						ObservationDate: result.EventDate,
-						CountryCode:     key,
-						TaxonID:         taxonID,
+						ObservationID:           fmt.Sprint(result.Key),
+						ObservationOriginalDate: result.EventDate,
+						ObservationDate:         cleanDate,
+						CountryCode:             key,
+						TaxonID:                 taxonID,
 					})
+
+					// Escape hatch if we already on the last day of the year
+					if len(result.EventDate) >= 10 {
+						breakYear := result.EventDate[:4]
+						breakDay := breakYear + "-12-31"
+						if result.EventDate[:10] >= breakDay {
+							breakEarly = true
+							break
+						}
+					}
+
 				}
 			}
-			if response.EndOfRecords {
+
+			if response.EndOfRecords || breakEarly {
 				break
 			}
+
+			time.Sleep(1 * time.Second) // Prevent overload of the GBIF API
 		}
 
 		sort.Slice(observations, func(a, b int) bool {
@@ -215,4 +247,31 @@ func FetchLatest(taxonID string) []LatestObservation {
 	}
 
 	return result
+}
+
+// Clean observation date to be in the format of YYYY-MM-DD
+func cleanDate(date string) string {
+	if date == "" {
+		return ""
+	}
+
+	var dateParts []string
+	if strings.Contains(date, "/") {
+		dateParts = strings.Split(date, "/")
+	} else {
+		dateParts = []string{date}
+	}
+
+	// Remove time if it exists
+	dateParts = strings.Split(dateParts[0], " ")
+	dateParts = strings.Split(dateParts[0], "T")
+
+	dateParts = strings.Split(dateParts[0], "-")
+	if len(dateParts) == 1 {
+		return dateParts[0] + "-01-01"
+	} else if len(dateParts) == 2 {
+		return dateParts[0] + "-" + dateParts[1] + "-01"
+	} else {
+		return dateParts[0] + "-" + dateParts[1] + "-" + dateParts[2]
+	}
 }

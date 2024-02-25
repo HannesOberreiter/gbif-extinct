@@ -11,7 +11,8 @@ import (
 
 	"github.com/HannesOberreiter/gbif-extinct/components"
 	"github.com/HannesOberreiter/gbif-extinct/internal"
-	"github.com/HannesOberreiter/gbif-extinct/pkg"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/pagination"
 	"github.com/a-h/templ"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/labstack/echo/v4"
@@ -57,16 +58,23 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	slog.Info("Server shutdown")
 
 	<-ctx.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := scheduler.Shutdown(); err != nil {
-		e.Logger.Fatal(err)
+		e.Logger.Fatal("Failed to stop scheduler", "error", err)
 	}
+	slog.Info("Scheduler stopped")
 	if err := e.Shutdown(ctx); err != nil {
-		e.Logger.Fatal(err)
+		e.Logger.Fatal("Failed to stop server", "error", err)
 	}
+	slog.Info("Server stopped")
+	if err := internal.DB.Close(); err != nil {
+		slog.Error("Failed to close database", "error", err)
+	}
+	slog.Info("Database closed")
 
 }
 
@@ -77,10 +85,11 @@ func index(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusBadRequest, "bad request")
 	}
+	counts := internal.GetCounts(payload)
 
 	return render(c,
 		http.StatusAccepted,
-		components.PageTable(internal.GetTableData(payload), payload, internal.GetCounts(payload)))
+		components.PageTable(internal.GetTableData(payload), payload, counts, pagination.CalculatePages(counts, payload)))
 
 }
 
@@ -104,11 +113,12 @@ func table(c echo.Context) error {
 	}
 
 	querystring := c.QueryString()
-	c.Response().Header().Set("HX-Push-Url", "/?"+querystring)
+	counts := internal.GetCounts(payload)
 
+	c.Response().Header().Set("HX-Push-Url", "/?"+querystring)
 	return render(c,
 		http.StatusAccepted,
-		components.Table(table, payload, internal.GetCounts(payload)))
+		components.Table(table, payload, counts, pagination.CalculatePages(counts, payload)))
 }
 
 /* Actions */
@@ -125,7 +135,7 @@ func fetch(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Failed to update taxa")
 	}
 
-	res := pkg.FetchLatest(id)
+	res := gbif.FetchLatest(id)
 	if res == nil {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Timeout or no data found on GBIF for this taxon."}}`)
 		return c.String(http.StatusNotFound, "No data found")
@@ -140,7 +150,7 @@ func fetch(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Failed database connection")
 	}
 	defer conn.Close()
-	var results [][]pkg.LatestObservation
+	var results [][]gbif.LatestObservation
 	results = append(results, res)
 	internal.SaveObservation(append(results, res), conn, ctx)
 	cancel()
@@ -177,10 +187,10 @@ func cronFetch() {
 	slog.Info("Starting cron")
 
 	ids := internal.GetOutdatedObservations()
-	var results [][]pkg.LatestObservation
+	var results [][]gbif.LatestObservation
 	for _, id := range ids {
 		internal.UpdateLastFetchStatus(id)
-		res := pkg.FetchLatest(id)
+		res := gbif.FetchLatest(id)
 		if res == nil {
 			continue
 		}

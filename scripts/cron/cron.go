@@ -3,20 +3,29 @@ package main
 import (
 	"context"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/HannesOberreiter/gbif-extinct/internal"
-	"github.com/HannesOberreiter/gbif-extinct/pkg"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
 )
 
 func main() {
 	slog.Info("Starting cron")
 
-	ids := internal.GetOutdatedObservations()
-	var results [][]pkg.LatestObservation
+	var ids []string
+	if len(os.Args) > 1 {
+		ids = os.Args[1:]
+		slog.Info("Fetching observations for specific taxa", "taxa", ids)
+	} else {
+		ids = internal.GetOutdatedObservations()
+		slog.Info("Fetching observations for outdated taxa", "taxa", ids)
+	}
+
+	var results [][]gbif.LatestObservation
 	for _, id := range ids {
 		internal.UpdateLastFetchStatus(id)
-		res := pkg.FetchLatest(id)
+		res := gbif.FetchLatest(id)
 		if res == nil {
 			continue
 		}
