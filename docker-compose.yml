@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  server:
+    container_name: gbif-extinct
+    image: gbif-extinct
+    restart: always
+    #entrypoint: ['bin/bash']
+    #stdin_open: true # docker run -i
+    #tty: true        # docker run -t
+    environment:
+      SQL_PATH: ./db/duck.db
+      USER_AGENT_PREFIX: production
+    volumes:
+      - ./db:/db
+    ports:
+      - '1323:1323'
