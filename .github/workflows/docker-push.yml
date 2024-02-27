@@ -3,6 +3,7 @@ name: docker-push
 on:
   push:
     branches:
+      - 'proto'
       - 'main'
   workflow_dispatch:
 
