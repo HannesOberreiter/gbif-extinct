@@ -1,4 +1,4 @@
-FROM golang:1.22 as build-stage
+FROM golang:bookworm as build-stage
 
 WORKDIR /app
 
@@ -18,7 +18,9 @@ RUN templ generate
 # We need to build the binaries for duckdb CGO_ENABLED=1
 RUN CGO_ENABLED=1 GOOS=linux go build -o /gbif-extinct
 
-FROM debian:bookworm-slim as production-stage
+FROM debian:bookworm as production-stage
+
+RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 
 WORKDIR /
 
