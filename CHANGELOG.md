@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v0.0.1-alpha.0...v1.0.0) (2024-02-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* Release prototype ([#4](https://github.com/HannesOberreiter/gbif-extinct/issues/4))
+
+### Features
+
+* Release prototype ([#4](https://github.com/HannesOberreiter/gbif-extinct/issues/4)) ([f010473](https://github.com/HannesOberreiter/gbif-extinct/commit/f0104731d435f8e11a187e11b0acc93b7816eabf))
+
+
+### Bug Fixes
+
+* :bug: add certs to deployment for fetching ([e7074a2](https://github.com/HannesOberreiter/gbif-extinct/commit/e7074a2f38e6b10913fbfd02e3f80c24a2005b57))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([#5](https://github.com/HannesOberreiter/gbif-extinct/issues/5)) ([737c7bc](https://github.com/HannesOberreiter/gbif-extinct/commit/737c7bca5bc9c0e3ea5c444502ab9172d0f3d481))
+
 ## 0.0.1 (2024-02-26)
 
 ### Features
