@@ -1,9 +1,6 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
-
-## 0.0.1-alpha.0 (2024-02-26)
-
+## 0.0.1 (2024-02-26)
 
 ### Features
 
@@ -12,7 +9,6 @@ All notable changes to this project will be documented in this file. See [commit
 * :rocket: Prototype ([becd64a](https://github.com/HannesOberreiter/gbif-extinct/commit/becd64aaea7c38faf0880b4fa68f103734251f69))
 * :sparkles: add compose file ([e475dd2](https://github.com/HannesOberreiter/gbif-extinct/commit/e475dd2553f1374ea5399ddfca35c49c2122bd56))
 * :sparkles: add funding ([7bff602](https://github.com/HannesOberreiter/gbif-extinct/commit/7bff6028bb4fc0fda9f8ffadd49fe5a9ca1d0edb))
-
 
 ### Bug Fixes
 
