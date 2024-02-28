@@ -13,6 +13,7 @@ var Config *config
 type config struct {
 	SqlPath           string `mapstructure:"SQL_PATH"`
 	TaxonBackbonePath string `mapstructure:"TAXON_BACKBONE_PATH"`
+	TaxonSimplePath   string `mapstructure:"TAXON_SIMPLE_PATH"`
 	UserAgentPrefix   string `mapstructure:"USER_AGENT_PREFIX"`
 }
 
@@ -27,6 +28,7 @@ func loadEnv() {
 	slog.Debug("Loading enviroment variables")
 	viper.SetDefault("SQL_PATH", "./db/duck.db")
 	viper.SetDefault("TAXON_BACKBONE_PATH", "./Taxon.tsv")
+	viper.SetDefault("TAXON_SIMPLE_PATH", "./simple.txt")
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath(".")

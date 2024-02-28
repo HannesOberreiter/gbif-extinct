@@ -102,5 +102,6 @@ $RECYCLE.BIN/
 
 # Custom
 Taxon.tsv
+simple.txt
 tailwindcss
 .env

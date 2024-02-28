@@ -5,5 +5,8 @@
         "gocron",
         "sqlite",
         "templ"
-    ]
+    ],
+    "tailwindCSS.includeLanguages": {
+        "templ": "html"
+    }
 }

@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -72,7 +73,7 @@ func clearOldObservations(conn *sql.Conn, ctx context.Context, taxonID string) {
 // The LastFetch column is used to determine if a taxon should be fetched at random by the GetOutdatedObservations function
 func UpdateLastFetchStatus(taxonID string) bool {
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := DB.Exec("UPDATE taxa SET LastFetch = ? WHERE TaxonID = ?", now, taxonID)
+	_, err := DB.Exec("UPDATE taxa SET LastFetch = ? WHERE SynonymID = ? OR TaxonID = ?", now, taxonID, taxonID)
 	if err != nil {
 		slog.Error("Failed to update last fetch status", "error", err)
 		return false
@@ -87,7 +88,7 @@ func GetOutdatedObservations() []string {
 	rows, err := DB.Query(`
 		SELECT TaxonID 
 		FROM taxa  
-		WHERE 6 > date_diff('month', today(), LastFetch) OR LastFetch IS NULL 
+		WHERE (6 > date_diff('month', today(), LastFetch) OR LastFetch IS NULL) AND isSynonym = FALSE
 		USING SAMPLE 5 ROWS`)
 	var taxonIDs []string
 	if err != nil {
@@ -116,7 +117,7 @@ func GetCounts(payload Payload) Counts {
 	var taxaCount int
 	var observationCount int
 
-	observationQuery := sq.Select("COUNT(*)").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.TaxonID")
+	observationQuery := sq.Select("COUNT(DISTINCT(observations.TaxonID, observations.CountryCode))").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.SynonymID")
 	createFilterQuery(&observationQuery, payload)
 	err = observationQuery.RunWith(DB).QueryRow().Scan(&observationCount)
 	if err != nil {
@@ -126,7 +127,7 @@ func GetCounts(payload Payload) Counts {
 	if payload.COUNTRY != nil && *payload.COUNTRY != "" {
 		taxaCount = observationCount // There should be only one taxa per observation per country
 	} else {
-		taxaQuery := sq.Select("COUNT(*)").From("taxa")
+		taxaQuery := sq.Select("COUNT(DISTINCT taxa.SynonymID)").From("taxa")
 		createFilterQuery(&taxaQuery, payload)
 		err = taxaQuery.RunWith(DB).QueryRow().Scan(&taxaCount)
 		if err != nil {
@@ -149,6 +150,10 @@ type TableRow struct {
 	ObservationDate  sql.NullTime
 	ObservedDiff     string
 
+	IsSynonym   bool
+	SynonymName sql.NullString
+	SynonymID   sql.NullString
+
 	TaxonKingdom string
 	TaxonPhylum  string
 	TaxonClass   string
@@ -158,13 +163,14 @@ type TableRow struct {
 }
 
 type Payload struct {
-	ORDER_BY  *string `query:"order_by"`
-	ORDER_DIR *string `query:"order_dir"`
-	SEARCH    *string `query:"search"`
-	COUNTRY   *string `query:"country"`
-	RANK      *string `query:"rank"`
-	TAXA      *string `query:"taxa"`
-	PAGE      *string `query:"page"`
+	ORDER_BY      *string `query:"order_by"`
+	ORDER_DIR     *string `query:"order_dir"`
+	SEARCH        *string `query:"search"`
+	COUNTRY       *string `query:"country"`
+	RANK          *string `query:"rank"`
+	TAXA          *string `query:"taxa"`
+	PAGE          *string `query:"page"`
+	HIDE_SYNONYMS *bool   `query:"hide_synonyms"`
 }
 
 var taxonRankMap = map[string]string{"kingdom": "TaxonKingdom", "phylum": "TaxonPhylum", "class": "TaxonClass", "order": "TaxonOrder", "family": "TaxonFamily"}
@@ -193,7 +199,7 @@ const PageLimit = uint64(100)
 func GetTableData(payload Payload) []TableRow {
 
 	query := sq.Select("taxa.TaxonID", "ScientificName", "CountryCode", "LastFetch", "ObservationID", "ObservationDate",
-		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily").From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.TaxonID").Limit(PageLimit)
+		"TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily", "isSynonym", "SynonymName", "SynonymID").From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.SynonymID").Limit(PageLimit)
 
 	var direction string
 	if payload.ORDER_DIR == nil || *payload.ORDER_DIR == "asc" {
@@ -220,6 +226,10 @@ func GetTableData(payload Payload) []TableRow {
 		}
 	}
 
+	if payload.HIDE_SYNONYMS != nil && *payload.HIDE_SYNONYMS {
+		query = query.Where(sq.Eq{"isSynonym": false})
+	}
+
 	createFilterQuery(&query, payload)
 
 	rows, err := query.RunWith(DB).Query()
@@ -231,7 +241,7 @@ func GetTableData(payload Payload) []TableRow {
 	}
 	for rows.Next() {
 		var row TableRow
-		err = rows.Scan(&row.TaxonID, &row.ScientificName, &row.CountryCode, &row.LastFetch, &row.ObservationID, &row.ObservationDate, &row.TaxonKingdom, &row.TaxonPhylum, &row.TaxonClass, &row.TaxonOrder, &row.TaxonFamily)
+		err = rows.Scan(&row.TaxonID, &row.ScientificName, &row.CountryCode, &row.LastFetch, &row.ObservationID, &row.ObservationDate, &row.TaxonKingdom, &row.TaxonPhylum, &row.TaxonClass, &row.TaxonOrder, &row.TaxonFamily, &row.IsSynonym, &row.SynonymName, &row.SynonymID)
 
 		taxonFields := []string{row.TaxonKingdom, row.TaxonPhylum, row.TaxonClass, row.TaxonOrder, row.TaxonFamily}
 		row.Taxa = ""
@@ -283,4 +293,17 @@ func countryCodeToFlag(x string) (country, flag string) {
 		return x, "🏴‍☠️"
 	}
 	return x, " " + string('🇦'+rune(x[0])-'A') + string('🇦'+rune(x[1])-'A')
+}
+
+func GetSynonymID(taxonID string) (string, error) {
+	var synonymID sql.NullString
+	err := DB.QueryRow("SELECT SynonymID FROM taxa WHERE TaxonID = ?", taxonID).Scan(&synonymID)
+	if err != nil {
+		slog.Error("Failed to get SynonymID", "error", err)
+		return "", errors.New("failed to fetch")
+	}
+	if !synonymID.Valid {
+		return "", errors.New("no id found")
+	}
+	return synonymID.String, nil
 }
