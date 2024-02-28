@@ -2,7 +2,7 @@ version: '3.8'
 services:
   server:
     container_name: gbif-extinct
-    image: gbif-extinct
+    image: hannesoberreiter/gbif-extinct:latest
     restart: always
     #entrypoint: ['bin/bash']
     #stdin_open: true # docker run -i
@@ -13,4 +13,4 @@ services:
     volumes:
       - ./db:/db
     ports:
-      - '1323:1323'
+      - 1323:1323

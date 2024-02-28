@@ -29,6 +29,121 @@ func main() {
 	}
 	defer conn.Close()
 	populateTaxa()
+	populateSynonyms()
+}
+
+type Backbone struct {
+	ID             string
+	ParentKey      string
+	BasionymKey    string
+	IsSynonym      string
+	Status         string
+	Rank           string
+	NomStatus      string
+	ConstituentKey string
+	Origin         string
+	SourceTaxonKey string
+
+	KingdomKey string
+	PhylumKey  string
+	ClassKey   string
+	OrderKey   string
+	FamilyKey  string
+	GenusKey   string
+	SpeciesKey string
+
+	NameID               string
+	ScientificName       string
+	CanonicalName        string
+	GenusOrAbove         string
+	SpecificEpithet      string
+	InfraSpecificEpithet string
+	NothoType            string
+	Authorship           string
+	Year                 string
+	BracketAuthorship    string
+	BracketYear          string
+
+	NamePublishedIn string
+	Issues          string
+}
+
+func populateSynonyms() {
+	slog.Info("Populating synonyms table", "file", internal.Config.TaxonSimplePath)
+	file, err := os.Open(internal.Config.TaxonSimplePath)
+	if err != nil {
+		slog.Error("Failed to open simple file", err)
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var count int = 0
+	for scanner.Scan() {
+		var text = scanner.Text()
+		fields := strings.Split(text, "\t")
+
+		backbone := Backbone{
+			ID:          fields[0],
+			ParentKey:   fields[1],
+			BasionymKey: fields[2],
+			IsSynonym:   fields[3],
+			Status:      fields[4],
+			Rank:        fields[5],
+			KingdomKey:  fields[10],
+		}
+
+		if backbone.Rank != "SPECIES" {
+			continue
+		}
+
+		/* TaxonID for ANIMALIA and PLANTAE */
+		if backbone.KingdomKey != "1" && backbone.KingdomKey != "6" {
+			continue
+		}
+
+		if backbone.IsSynonym != "t" {
+			continue
+		}
+
+		if backbone.ParentKey == "" || backbone.ParentKey == "\\N" {
+			continue
+		}
+
+		var parentName string
+
+		err := internal.DB.QueryRow("SELECT ScientificName FROM taxa WHERE TaxonID = ?", backbone.ParentKey).Scan(&parentName)
+		if err != nil {
+			slog.Debug("Failed to get parent name", "parentKey", backbone.ParentKey, "id", backbone.ID, "error", err)
+			/* If there is no parent in our database, we delete the taxon. As the parent is probably not species level */
+			_, err = conn.ExecContext(context.Background(), `DELETE FROM taxa WHERE TaxonID = ?`, backbone.ID)
+			if err != nil {
+				slog.Error("Database delete error", err)
+			}
+			continue
+		}
+
+		_, err = conn.ExecContext(context.Background(), `
+			UPDATE taxa
+			SET SynonymID = ?,
+				SynonymName = ?,
+				isSynonym = ?
+			WHERE TaxonID = ?
+		`, backbone.ParentKey, parentName, true, backbone.ID)
+		if err != nil {
+			slog.Error("Database update error", err)
+		}
+		count++
+
+		if count%5000 == 0 {
+			slog.Info("Inserting synonyms", "count", count, "lastId", backbone.ID)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		slog.Error("Failed to read backbone taxon file", err)
+	}
 }
 
 // Populate taxon table with data from gbif backbone taxonomy
@@ -91,7 +206,7 @@ func populateTaxa() {
 			continue
 		}
 
-		insertString := fmt.Sprintf("(%s, '%s', '%s', '%s', '%s', '%s', '%s', '%s')", fields[0], safeQuotes(fields[7]), safeQuotes(fields[17]), safeQuotes(fields[18]), safeQuotes(fields[19]), safeQuotes(fields[20]), safeQuotes(fields[21]), safeQuotes(fields[22]))
+		insertString := fmt.Sprintf("(%s, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s')", fields[0], fields[0], safeQuotes(fields[7]), safeQuotes(fields[17]), safeQuotes(fields[18]), safeQuotes(fields[19]), safeQuotes(fields[20]), safeQuotes(fields[21]), safeQuotes(fields[22]))
 		tempArray = append(tempArray, insertString)
 
 		if len(tempArray)%5000 == 0 {
@@ -115,9 +230,10 @@ func safeQuotes(s string) string {
 }
 
 func insert(tempArray *[]string) {
+	/* The SynonymID is primarily used for connection to the observation table, if the taxon itself is no synonym the TaxonID will be equal to the SynonymID */
 	_, err := conn.ExecContext(context.Background(), `
 		INSERT OR REPLACE INTO taxa
-		(TaxonID, ScientificName, TaxonKingdom, TaxonPhylum, TaxonClass, TaxonOrder, TaxonFamily, TaxonGenus)
+		(TaxonID, SynonymID, ScientificName, TaxonKingdom, TaxonPhylum, TaxonClass, TaxonOrder, TaxonFamily, TaxonGenus)
 		VALUES `+strings.Join(*tempArray, ","))
 	if err != nil {
 		slog.Error("Database error", err)

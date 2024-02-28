@@ -19,6 +19,12 @@ function updateFields(){
             input.value = searchParams.get(input.name);
         }
     });
+    const checkboxes = filterForm.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (searchParams.has(checkbox.name)) {
+            checkbox.checked = searchParams.get(checkbox.name) === "true";
+        }
+    });
 }
 
 window.onload = function () {

@@ -72,6 +72,14 @@ templ Filter(){
       			</label>
       			<input class="block w-full py-1 mb-3" id="taxa" type="text" placeholder="Based on rank" name="taxa" />
     		</div>
+			<!-- Checkbox if Synonym Taxa should be shown -->
+			<div class="flex items-center w-full md:w-1/2 lg:w-1/4 px-3 mb-3 md:mb-0" >
+			    <label class="uppercase tracking-wide text-gray-500 text-xs font-bold mb-2 mr-2" for="synonym">
+			        Hide Synonyms
+			    </label>
+				<input class="block py-1 mb-3 pl-1" id="synonym" type="checkbox" name="hide_synonyms" value="true" onclick="document.getElementById('filterForm').submit();" />
+			</div>
+
 			<!-- Hidden fields for sorting -->
 			<input hidden name="order_by" value="date"/>
 			<input hidden name="order_dir" value="asc"/>
@@ -132,6 +140,7 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pa
 					@TableTh("Latest Observation", "date", payload)
 					<th class="text-left">~Years</th>
 					@TableTh("Last Fetched", "fetch", payload)
+					<th class="text-left">Synonym</th>
 					<th class="text-left">Taxa</th>
                 </tr>
             </thead>
@@ -166,6 +175,13 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pa
 								Loading...
 							</span>
 
+						</td>
+						<td>
+							if row.IsSynonym && row.SynonymID.Valid && row.SynonymName.Valid {
+								<a class="italic" href={ templ.URL("https://www.gbif.org/species/" + row.SynonymID.String)} target="_blank"> { row.SynonymName.String } </a>
+							} else {
+								{ "N/A" }
+							}
 						</td>
 						<td class="text-left">
 							{ row.Taxa }

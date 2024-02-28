@@ -124,25 +124,33 @@ func table(c echo.Context) error {
 
 /* Actions */
 func fetch(c echo.Context) error {
+
 	id := c.QueryParam("taxonID")
 	if id == "" {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Missing required taxonID QueryParam."}}`)
 		return c.String(http.StatusBadRequest, "bad request")
 	}
+	var err error
+	var synonymId string
 
-	updated := internal.UpdateLastFetchStatus(id)
+	synonymId, err = internal.GetSynonymID(id)
+	if err != nil {
+		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Failed to get SynonymID"}}`)
+		return c.String(http.StatusBadRequest, "Failed to get SynonymID")
+	}
+
+	updated := internal.UpdateLastFetchStatus(synonymId)
 	if !updated {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Failed to update the taxa, the ID could be missing in our database."}}`)
 		return c.String(http.StatusBadRequest, "Failed to update taxa")
 	}
 
-	res := gbif.FetchLatest(id)
+	res := gbif.FetchLatest(synonymId)
 	if res == nil {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Timeout or no data found on GBIF for this taxon."}}`)
 		return c.String(http.StatusNotFound, "No data found")
 	}
 
-	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	conn, err := internal.DB.Conn(ctx)
 	if err != nil {
