@@ -180,7 +180,7 @@ func setupScheduler() {
 
 	j, err := scheduler.NewJob(
 		gocron.DurationJob(
-			5*60*time.Second,
+			60*time.Second,
 		),
 		gocron.NewTask(cronFetch),
 		gocron.WithSingletonMode(gocron.LimitModeReschedule),
