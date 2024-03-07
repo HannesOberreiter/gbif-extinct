@@ -12,7 +12,7 @@ import (
 	"github.com/HannesOberreiter/gbif-extinct/components"
 	"github.com/HannesOberreiter/gbif-extinct/internal"
 	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
-	"github.com/HannesOberreiter/gbif-extinct/pkg/pagination"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/queries"
 	"github.com/a-h/templ"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/labstack/echo/v4"
@@ -34,6 +34,7 @@ func main() {
 	e.GET("/about", about)
 	e.GET("/table", table)
 	e.GET("/fetch", fetch)
+	e.GET("/download", download)
 	e.File("/favicon.ico", "./assets/favicon.png")
 	e.Static("/assets", "./assets")
 
@@ -45,9 +46,16 @@ func main() {
 		Timeout: 15 * 60 * time.Second,
 	}))
 
+	/* Init Packages */
+	internal.Migrations() // Update the database schema to the latest version
+	gbif.UpdateConfig(gbif.Config{UserAgentPrefix: internal.Config.UserAgentPrefix})
+	components.RenderAbout()
+
 	/* Start cron scheduler */
 	setupScheduler()
-	scheduler.Start()
+	if scheduler != nil {
+		scheduler.Start()
+	}
 
 	/* Start http server */
 	go func() {
@@ -79,18 +87,25 @@ func main() {
 
 }
 
+type Payload struct {
+	ORDER_BY      *string `query:"order_by"`
+	ORDER_DIR     *string `query:"order_dir"`
+	SEARCH        *string `query:"search"`
+	COUNTRY       *string `query:"country"`
+	RANK          *string `query:"rank"`
+	TAXA          *string `query:"taxa"`
+	PAGE          *string `query:"page"`
+	HIDE_SYNONYMS *bool   `query:"hide_synonyms"`
+}
+
 /* Pages */
 func index(c echo.Context) error {
-	var payload internal.Payload
-	err := c.Bind(&payload)
-	if err != nil {
-		return c.String(http.StatusBadRequest, "bad request")
-	}
-	counts := internal.GetCounts(payload)
+	q := buildQuery(c)
+	counts := queries.GetCounts(internal.DB, q)
 
 	return render(c,
 		http.StatusAccepted,
-		components.PageTable(internal.GetTableData(payload), payload, counts, pagination.CalculatePages(counts, payload)))
+		components.PageTable(queries.GetTableData(internal.DB, q), q, counts, components.CalculatePages(counts, q)))
 
 }
 
@@ -102,24 +117,20 @@ func about(c echo.Context) error {
 
 /* Partials */
 func table(c echo.Context) error {
-	var payload internal.Payload
-	err := c.Bind(&payload)
-	if err != nil {
-		return c.String(http.StatusBadRequest, "bad request")
-	}
-	table := internal.GetTableData(payload)
+	q := buildQuery(c)
+	querystring := c.QueryString()
+
+	table := queries.GetTableData(internal.DB, q)
+	counts := queries.GetCounts(internal.DB, q)
 
 	if c.Request().Header.Get("HX-Request") == "" {
 		return c.JSON(http.StatusOK, table)
 	}
 
-	querystring := c.QueryString()
-	counts := internal.GetCounts(payload)
-
 	c.Response().Header().Set("HX-Push-Url", "/?"+querystring)
 	return render(c,
 		http.StatusAccepted,
-		components.Table(table, payload, counts, pagination.CalculatePages(counts, payload)))
+		components.Table(table, q, counts, components.CalculatePages(counts, q)))
 }
 
 /* Actions */
@@ -133,13 +144,13 @@ func fetch(c echo.Context) error {
 	var err error
 	var synonymId string
 
-	synonymId, err = internal.GetSynonymID(id)
+	synonymId, err = gbif.GetSynonymID(internal.DB, id)
 	if err != nil {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Failed to get SynonymID"}}`)
 		return c.String(http.StatusBadRequest, "Failed to get SynonymID")
 	}
 
-	updated := internal.UpdateLastFetchStatus(synonymId)
+	updated := gbif.UpdateLastFetchStatus(internal.DB, synonymId)
 	if !updated {
 		c.Response().Header().Set("HX-Trigger", `{"showMessage":{"level" : "error", "message" : "Failed to update the taxa, the ID could be missing in our database."}}`)
 		return c.String(http.StatusBadRequest, "Failed to update taxa")
@@ -161,15 +172,30 @@ func fetch(c echo.Context) error {
 	defer conn.Close()
 	var results [][]gbif.LatestObservation
 	results = append(results, res)
-	internal.SaveObservation(append(results, res), conn, ctx)
+	gbif.SaveObservation(results, conn, ctx)
 	cancel()
 
 	c.Response().Header().Set("HX-Trigger", "filterSubmit")
 	return c.String(http.StatusOK, "Updated")
 }
 
+// Download data as CSV
+func download(c echo.Context) error {
+	// q := buildQuery(c)
+	return c.String(http.StatusOK, "Download not implemented")
+	/*data := internal.GetTableData(payload, true)
+	c.Response().Header().Set("Content-Disposition", "attachment; filename=extinct.csv")
+	c.Response().Header().Set("Content-Type", "text/csv")
+	return internal.WriteCSV(c.Response().Writer, data)*/
+}
+
 // Setup cron scheduler
 func setupScheduler() {
+	interval := internal.Config.CronJobIntervalSec
+	if interval == 0 {
+		slog.Info("Scheduler disabled", "interval", interval)
+		return
+	}
 	slog.Info("Init Scheduler")
 
 	var err error
@@ -179,9 +205,7 @@ func setupScheduler() {
 	}
 
 	j, err := scheduler.NewJob(
-		gocron.DurationJob(
-			60*time.Second,
-		),
+		gocron.DurationJob(time.Duration(interval)*time.Second),
 		gocron.NewTask(cronFetch),
 		gocron.WithSingletonMode(gocron.LimitModeReschedule),
 	)
@@ -195,10 +219,10 @@ func setupScheduler() {
 func cronFetch() {
 	slog.Info("Starting cron")
 
-	ids := internal.GetOutdatedObservations()
+	ids := gbif.GetOutdatedObservations(internal.DB)
 	var results [][]gbif.LatestObservation
 	for _, id := range ids {
-		internal.UpdateLastFetchStatus(id)
+		gbif.UpdateLastFetchStatus(internal.DB, id)
 		res := gbif.FetchLatest(id)
 		if res == nil {
 			continue
@@ -221,7 +245,7 @@ func cronFetch() {
 	}
 	defer conn.Close()
 
-	internal.SaveObservation(results, conn, ctx)
+	gbif.SaveObservation(results, conn, ctx)
 	cancel()
 }
 
@@ -233,4 +257,15 @@ func render(c echo.Context, status int, t templ.Component) error {
 		return c.String(http.StatusInternalServerError, "failed to render response template")
 	}
 	return nil
+}
+
+// Utility function to build a query struct with sane and clean defaults from the payload parser
+func buildQuery(c echo.Context) queries.Query {
+	var payload Payload
+	err := c.Bind(&payload)
+	if err != nil {
+		slog.Warn("Failed to bind payload", "error", err)
+		return queries.NewQuery(nil)
+	}
+	return queries.NewQuery(payload)
 }

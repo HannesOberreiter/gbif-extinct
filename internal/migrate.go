@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"os"
@@ -24,20 +25,39 @@ func Migrations() {
 		if f.Name()[len(f.Name())-4:] != ".sql" {
 			continue
 		}
-		log.Printf("Found migration file: %s\n", f.Name())
+		slog.Info("Found migration file", "file", f.Name())
 		file, err := os.ReadFile("migrations/" + f.Name())
 		if err != nil {
 			log.Fatal(err)
 		}
 		queries = append(queries, string(file))
 	}
+	ctx := context.Background()
+	conn, err := DB.Conn(ctx)
+	if err != nil {
+		slog.Error("Failed to create migration connection", err)
+		return
+	}
+	defer conn.Close()
+	tx, err := conn.BeginTx(ctx, nil)
+	defer tx.Rollback()
+	if err != nil {
+		slog.Error("Failed to start migration transaction", err)
+		return
+	}
 
 	for _, query := range queries {
-		log.Printf("Migration of %q\n", query)
-		_, err = DB.Exec(query)
+		_, err = tx.Exec(query)
 		if err != nil {
-			log.Printf("%q: %s\n", err, query)
+			slog.Error("Failed to run migration", "error", err, "query", query)
 			return
 		}
 	}
+	err = tx.Commit()
+	if err != nil {
+		slog.Error("Failed to commit migration", "error", err)
+		return
+	}
+	conn.Close()
+	slog.Info("Migrations ran successfully")
 }
