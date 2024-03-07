@@ -27,6 +27,7 @@ WORKDIR /
 COPY --from=build-stage /gbif-extinct /gbif-extinct
 COPY --from=build-stage /app/assets /assets
 COPY --from=build-stage /app/migrations /migrations
+COPY --from=build-stage /app/README.md /README.md
 
 EXPOSE 1323
 
