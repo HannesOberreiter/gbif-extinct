@@ -21,6 +21,8 @@ var conn *sql.Conn
 // You can run this script with `go run scripts/mutate/mutate.go`.
 func main() {
 	slog.Info("Starting mutation")
+	internal.Migrations()
+
 	var err error
 	conn, err = internal.DB.Conn(context.Background())
 	if err != nil {

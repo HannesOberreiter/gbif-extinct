@@ -1,14 +1,90 @@
 package components
 
 import (
+	"math"
+	"strconv"
+	"os"
+	"log/slog"
+	"fmt"
+
+	"github.com/HannesOberreiter/gbif-extinct/pkg/queries"
+	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
 	"github.com/HannesOberreiter/gbif-extinct/internal"
-	"github.com/HannesOberreiter/gbif-extinct/pkg/pagination"
+
     "golang.org/x/text/message"
-)
+	"github.com/gomarkdown/markdown"
+	"github.com/gomarkdown/markdown/html"
+	"github.com/gomarkdown/markdown/parser")
 
 var printer = message.NewPrinter(message.MatchLanguage("en"))
 
-type TableRows []internal.TableRow
+type Pages struct {
+	CURRENT  int
+	NEXT     int
+	PREVIOUS int
+	LAST     int
+}
+
+type PagesString struct {
+	CURRENT  string
+	NEXT     string
+	PREVIOUS string
+	LAST     string
+}
+
+func CalculatePages(counts queries.Counts, q queries.Query) PagesString {
+	var response Pages
+	response.CURRENT = 1
+
+		page, err := strconv.Atoi(q.PAGE)
+		if err == nil {
+			response.CURRENT = page
+		}
+	
+
+	response.LAST = int(math.Ceil(float64(counts.TaxaCount) / float64(queries.PageLimit)))
+	if response.CURRENT == response.LAST {
+		response.NEXT = response.LAST
+		response.PREVIOUS = response.LAST - 1
+	} else if response.CURRENT == 1 {
+		response.NEXT = response.CURRENT + 1
+		response.PREVIOUS = response.CURRENT
+	} else {
+		response.NEXT = response.CURRENT + 1
+		response.PREVIOUS = response.CURRENT - 1
+	}
+
+	return PagesString{
+		CURRENT:  strconv.Itoa(response.CURRENT),
+		NEXT:     strconv.Itoa(response.NEXT),
+		PREVIOUS: strconv.Itoa(response.PREVIOUS),
+		LAST:     strconv.Itoa(response.LAST),
+	}
+}
+
+
+type TableRows []queries.TableRow
+
+var _aboutPage string;
+
+func RenderAbout() {
+	md, err := os.ReadFile("README.md")
+	if err != nil {
+		slog.Error("Error reading README.md", err)
+		_aboutPage = "Error reading README.md"
+	}
+
+	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
+	p := parser.NewWithExtensions(extensions)
+	doc := p.Parse(md)
+
+	htmlFlags := html.CommonFlags | html.HrefTargetBlank
+	opts := html.RendererOptions{Flags: htmlFlags}
+	renderer := html.NewRenderer(opts)
+	res := markdown.Render(doc, renderer)
+	_aboutPage = string(res)
+	slog.Info("About page rendered")
+}
 
 // Intercept helper function to call main.js setSortingFields to update the form and submit it
 script setSortingFields(orderBy string, orderDir string) {
@@ -22,9 +98,9 @@ script baseUrl() {
 
 
 // Utility to create a table header with sorting
-templ TableTh(columnName string, orderBy string, payload internal.Payload) {
-	if payload.ORDER_BY != nil && *payload.ORDER_BY == orderBy {
-		if payload.ORDER_DIR != nil && *payload.ORDER_DIR == "asc" {
+templ TableTh(columnName string, orderBy string, q queries.Query) {
+	if q.ORDER_BY == orderBy {
+		if q.ORDER_DIR == "asc" {
 			<th class="text-left font-black cursor-pointer" onclick={ setSortingFields(orderBy, "desc") }> { columnName } ↓</th>
 		} else {
 			<th class="text-left font-black cursor-pointer" onclick={ setSortingFields(orderBy, "asc") }> { columnName } ↑</th>
@@ -95,7 +171,7 @@ templ Filter(){
 	</form>
 }
 
-templ Pagination(pages pagination.PagesString){
+templ Pagination(pages PagesString){
 	<div class="flex flex-row">
 		<div>
 			<button class="uppercase tracking-wide hover:font-bold pr-sm"  hx-get="/table" hx-swap="outerHTML" hx-target="#tableContainer" hx-include="#filterForm" hx-vals={ `{"page":1}` }>
@@ -125,7 +201,7 @@ templ Pagination(pages pagination.PagesString){
 
 
 
-templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pages pagination.PagesString) {
+templ Table(rows TableRows, q queries.Query, counts queries.Counts, pages PagesString) {
     <div id="tableContainer" class="w-full">
 		<small>
 			<span>Taxa: { printer.Sprintln(counts.TaxaCount) }</span>
@@ -135,11 +211,11 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pa
         <table class="w-full caption-bottom text-nowrap">
             <thead class="">
                 <tr>
-					@TableTh("Scientific Name", "name", payload)
+					@TableTh("Scientific Name", "name", q)
 					<th class="text-left">Country</th>
-					@TableTh("Latest Observation", "date", payload)
+					@TableTh("Latest Observation", "date", q)
 					<th class="text-left">~Years</th>
-					@TableTh("Last Fetched", "fetch", payload)
+					@TableTh("Last Fetched", "fetch", q)
 					<th class="text-left">Synonym</th>
 					<th class="text-left">Taxa</th>
                 </tr>
@@ -198,7 +274,7 @@ templ Table(rows TableRows, payload internal.Payload, counts internal.Counts, pa
 }
 
 // Index landing page with table
-templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts, pages pagination.PagesString){
+templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages PagesString){
 		@Page() {
 			<div class="p-4">
     			<section>
@@ -206,7 +282,7 @@ templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts
     			</section>
 				<hr class="mt-1 mb-1" />
     			<main>
-					@Table(rows, payload, counts, pages)
+					@Table(rows, q, counts, pages)
     			</main>
 			</div>
 		}
@@ -215,21 +291,18 @@ templ PageTable(rows TableRows, payload internal.Payload, counts internal.Counts
 // About page
 templ PageAbout(){
 	@Page() {
-		<div class="p-4">
-			About
-
-			lorem isopsum
-
-			## Table Columns
-
-			- **Scientific Name**: The scientific name of the species
-			- **Country**: The 2-letter ISO country code
-			- **Latest Observation**: The date of the latest observation, if only a year/month is given the first month / day of the month is used. Additionally ranges are ignored and only the first date is used
-			- **~Years**: The difference in years between the latest observation and the current date, calculated without leap years
-			- **Last Fetched**: The date when the data was last fetched from GBIF
-
-
+		<div class="container mx-auto px-4">
+			@templ.Raw(_aboutPage)
+			
+			<hr class="mt-1 mb-1" />
+			<h3>Current Server Setup</h3>
+			<ul>
+				<li>Cron Interval: { fmt.Sprint(internal.Config.CronJobIntervalSec) } seconds</li>
+				<li>Taxa per Cron: { gbif.SampleRows }</li>
+				<li>User Agent Prefix: { internal.Config.UserAgentPrefix }</li>
+			</ul>
 		</div>
+
 	}
 
 }
