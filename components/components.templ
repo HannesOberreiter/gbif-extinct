@@ -241,7 +241,7 @@ templ Table(rows TableRows, q queries.Query, counts queries.Counts, pages PagesS
             </thead>
             <tbody>
 			    for _, row := range rows {
-                	<tr class="">
+                	<tr class="hover:bg-gray-200 border-0">
                         <td class="text-left">
 							<a class="italic" href={ templ.URL("https://www.gbif.org/species/" + row.TaxonID)} target="_blank">
 								{ nbsp(row.ScientificName.String) }
