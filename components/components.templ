@@ -210,9 +210,7 @@ templ Pagination(pages PagesString){
 				}
 			</button>
 		</div>
-		
 	</div>
-
 }
 
 
@@ -224,9 +222,9 @@ templ Table(rows TableRows, q queries.Query, counts queries.Counts, pages PagesS
 			<span> | </span>
 			<span>Observations: { printer.Sprintln(counts.ObservationCount) }</span>
 		</small>
-		<div class="overflow-x-auto mt-2">
-        <table class="text-nowrap table-auto overflow-scroll w-full m-0">
-            <thead class="">
+		<div class="mt-2">
+        <table class="text-nowrap table-auto w-full m-0">
+            <thead>
                 <tr>
 					@TableTh("Scientific Name", "name", q)
 					<th class="text-left">Country</th>
@@ -315,7 +313,7 @@ templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages Pa
 // About page
 templ PageAbout(){
 	@Page() {
-		<div>
+		<div class="container">
 			@templ.Raw(_aboutPage)
 			
 			<hr class="mt-1 mb-1" />
@@ -341,7 +339,7 @@ templ Page() {
             <link href="/assets/css/main.css" rel="stylesheet" />
 			<script src="/assets/js/htmx.min.js" />
 		</head>
-		<body class="prose font-mono container mx-auto">
+		<body class="prose font-mono">
 			<div class="p-4">
 				{ children... }
 			</div>
