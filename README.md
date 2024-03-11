@@ -27,6 +27,20 @@ The GBIF data is not perfect and contains errors and biases. The data is only as
 - To reduce query time and load on the gbif API, we take some shortcuts when searching for taxa/countries see function `getCountries` [https://github.com/HannesOberreiter/gbif-extinct/blob/main/pkg/gbif/gbif.go](https://github.com/HannesOberreiter/gbif-extinct/blob/main/pkg/gbif/gbif.go).
 - Fetching of new data happens at random with a cron job, therefore the data you see on gbif extinct could be outdated by over a year.
 
+### Usage
+
+Above the table you find a filter form. You can filter by taxon name, taxonomic rank, and country. The taxon name search will return all taxa which contain the search string, eg. "apis" will also return "Caledan**apis** peckorum". The taxonomic rank is a dropdown and will return all taxa which are of the selected rank or higher, the search term itself will match with the start of the string, eg. Family "Ap", will return **Ap**idae, **Ap**iaceae etc. The country code is two letter ISO standard, eg. "AT" for Austria. The synonym checkbox will hide all synonyms from the result.
+
+#### Table Columns
+
+- **Scientific Name**: The scientific name of the taxon. Link redirecting to GBIF taxon page.
+- **Country**: The country where the taxon was last observed, as two letters and a unicode flag.
+- **Latest Observation**: The latest observation of the taxon in the country. The date is formatted as "YYYY-MM-DD". Link redirecting to GBIF occurrence page. The date could differ from GBIF as there are multiple GBIF date formats including ranges, only years etc. For ranges we use the first part and if only part of the date is present we use the first of the year, month or day.
+- **~Years**: The years since the last observation. The years are calculated from the current date and the latest observation date.
+- **Last Fetched**: The date when the data was last fetched from GBIF. The date is formatted as "YYYY-MM-DD". You can click on the date to force a new fetch of the data.
+- **Synonym**: The synonym of the taxon. Link redirecting to GBIF taxon page.
+- **Taxa**: The taxonomy of the taxon.
+
 ## Development
 
 The project is open-source and contributions are welcome [github.com/HannesOberreiter/gbif-extinct](https://github.com/HannesOberreiter/gbif-extinct). The project is written in Go and uses Echo as a web framework. HTMX and Tailwind CSS and templ are used for the frontend. The database is DuckDB as it can be deployed as binary inside the go application.
