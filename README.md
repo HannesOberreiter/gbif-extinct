@@ -67,6 +67,14 @@ Running the mutate script will fill the database with the latest backbone taxono
 go run ./scripts/mutate/mutate.go
 ```
 
+### Testing
+
+To run the tests you will need to set the `SQL_PATH` and `ROOT` environment variables. The `SQL_PATH` is the path to the database file (from the root) and `ROOT` is the path to the root of the project.
+
+```bash
+SQL_PATH="memory" ROOT=/gbif-extinct go test -v ./...
+```
+
 ### Docker
 
 GitHub action is used to generate the web-sever as a docker container [hub.docker.com/r/hannesoberreiter/gbif-extinct](https://hub.docker.com/r/hannesoberreiter/gbif-extinct). See the [Dockerfile](Dockerfile) for details of the build and the [docker-compose.yml](docker-compose.yml) for the deployment.
