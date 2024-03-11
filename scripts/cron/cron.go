@@ -12,6 +12,7 @@ import (
 
 func main() {
 	slog.Info("Starting cron")
+	internal.Load()
 
 	gbif.UpdateConfig(gbif.Config{UserAgentPrefix: internal.Config.UserAgentPrefix})
 
