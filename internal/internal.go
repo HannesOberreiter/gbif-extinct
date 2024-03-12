@@ -15,6 +15,7 @@ var (
 )
 
 type config struct {
+	ROOT               string `mapstructure:"ROOT"`
 	SqlPath            string `mapstructure:"SQL_PATH"`
 	TaxonBackbonePath  string `mapstructure:"TAXON_BACKBONE_PATH"`
 	TaxonSimplePath    string `mapstructure:"TAXON_SIMPLE_PATH"`
@@ -22,7 +23,7 @@ type config struct {
 	CronJobIntervalSec int    `mapstructure:"CRON_JOB_INTERVAL_SEC"`
 }
 
-func init() {
+func Load() {
 	slog.Debug("Initializing internal package")
 	loadEnv()
 	loadDb()
@@ -33,25 +34,34 @@ func init() {
 // therefore as long as the server is running we cannot connect to the database externally
 func loadDb() {
 	var err error
-	DB, err = sql.Open("duckdb", Config.SqlPath)
+	var dbPath string
+	if Config.SqlPath == "memory" {
+		slog.Info("No database path set, using in-memory database")
+		dbPath = ""
+	} else {
+		dbPath = Config.ROOT + Config.SqlPath
+	}
+
+	DB, err = sql.Open("duckdb", dbPath)
 	if err != nil {
-		slog.Debug("Failed to connect to database.", "path", Config.SqlPath)
+		slog.Debug("Failed to connect to database.", "path", dbPath)
 		log.Fatal(err)
 	}
-	slog.Info("Connected to database.", "path", Config.SqlPath)
+	slog.Info("Connected to database.", "path", dbPath)
 }
 
 // loadEnv loads the environment variables from the .env file or the system environment
 // most have sane defaults anyway.
 // The order is as follows default < .env < system environment.
 func loadEnv() {
-	slog.Debug("Loading enviroment variables")
+	slog.Debug("Loading environment variables")
 
-	viper.SetDefault("SQL_PATH", "./db/duck.db")
-	viper.SetDefault("TAXON_BACKBONE_PATH", "./Taxon.tsv")
-	viper.SetDefault("TAXON_SIMPLE_PATH", "./simple.txt")
+	viper.SetDefault("SQL_PATH", "/db/duck.db")
+	viper.SetDefault("TAXON_BACKBONE_PATH", "/Taxon.tsv")
+	viper.SetDefault("TAXON_SIMPLE_PATH", "/simple.txt")
 	viper.SetDefault("USER_AGENT_PREFIX", "local")
-	viper.SetDefault("CRON_JOB_INTERVAL_SEC", 60)
+	viper.SetDefault("CRON_JOB_INTERVAL_SEC", 0)
+	viper.SetDefault("ROOT", ".")
 
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
@@ -60,7 +70,7 @@ func loadEnv() {
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		slog.Error("Error loading .env file", "error", err)
+		slog.Warn("Error loading .env file", "error", err)
 	}
 
 	err = viper.Unmarshal(&Config)

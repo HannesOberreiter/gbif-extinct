@@ -47,7 +47,8 @@ func main() {
 	}))
 
 	/* Init Packages */
-	internal.Migrations() // Update the database schema to the latest version
+	internal.Load()
+	internal.Migrations(internal.DB, internal.Config.ROOT) // Update the database schema to the latest version
 	gbif.UpdateConfig(gbif.Config{UserAgentPrefix: internal.Config.UserAgentPrefix})
 	components.RenderAbout()
 
