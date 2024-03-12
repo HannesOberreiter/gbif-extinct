@@ -27,16 +27,18 @@ func TestUpdateConfig(t *testing.T) {
 
 func TestFetchLatest(t *testing.T) {
 	loadDemo()
-
-	res := FetchLatest(DemoTaxa[0])
+	/* Endemic species to Austria, fast response low number of results */
+	/* https://www.gbif.org/species/4560445 */
+	var id = "4560445"
+	res := FetchLatest(id)
 	if res == nil {
 		t.Errorf("got %v, wanted %v", res, "not nil")
 	}
 	if len(res) == 0 {
 		t.Errorf("got %d, wanted < %d", len(res), 1)
 	}
-	if res[0].TaxonID != DemoTaxa[0] {
-		t.Errorf("got %s, wanted %s", res[0].TaxonID, DemoTaxa[0])
+	if res[0].TaxonID != id {
+		t.Errorf("got %s, wanted %s", res[0].TaxonID, id)
 	}
 
 	res = FetchLatest("123456")
