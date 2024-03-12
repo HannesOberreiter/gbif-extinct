@@ -1,6 +1,7 @@
 package gbif
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"log/slog"
@@ -18,6 +19,62 @@ var DemoTaxa = []string{
 // Demo data for testing which is a synonym
 var DemoSyn = []string{
 	"8071112", "4492208", "'Urocerus gigas'", "'Ichneumon gigas'", "'Animalia'", "'Arthropoda'", "'Insecta'", "'Hymenoptera'", "'Siricidae'", "'Urocerus'", "true",
+}
+
+func TestUpdateConfig(t *testing.T) {
+	UpdateConfig(Config{UserAgentPrefix: "test"})
+}
+
+func TestFetchLatest(t *testing.T) {
+	loadDemo()
+
+	res := FetchLatest(DemoTaxa[0])
+	if res == nil {
+		t.Errorf("got %v, wanted %v", res, "not nil")
+	}
+	if len(res) == 0 {
+		t.Errorf("got %d, wanted < %d", len(res), 1)
+	}
+	if res[0].TaxonID != DemoTaxa[0] {
+		t.Errorf("got %s, wanted %s", res[0].TaxonID, DemoTaxa[0])
+	}
+
+	res = FetchLatest("123456")
+	if res != nil {
+		t.Errorf("got %v, wanted %v", res, nil)
+	}
+}
+
+func TestSaveObservations(t *testing.T) {
+	loadDemo()
+	observation := LatestObservation{
+		TaxonID:                 DemoTaxa[0],
+		ObservationID:           "123456",
+		ObservationOriginalDate: "1989-01-05",
+		ObservationDate:         "1989-01-05",
+		CountryCode:             "AT",
+	}
+
+	var observations [][]LatestObservation
+	observations = append(observations, []LatestObservation{observation})
+
+	ctx := context.Background()
+	conn, err := internal.DB.Conn(ctx)
+	if err != nil {
+		slog.Error("Failed to create connection", err)
+	}
+	defer conn.Close()
+
+	SaveObservation(observations, conn, ctx)
+
+	var count int
+	err = internal.DB.QueryRow("SELECT COUNT(*) FROM observations WHERE TaxonID = ?", DemoTaxa[0]).Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("got %d, wanted %d", count, 1)
+	}
 }
 
 func TestGetOutdatedObservations(t *testing.T) {
