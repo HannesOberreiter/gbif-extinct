@@ -113,7 +113,7 @@ func FetchLatest(taxonID string) []LatestObservation {
 						continue
 					}
 
-					cleanDate := cleanDate(result.EventDate)
+					cleanDate := CleanDate(result.EventDate)
 
 					if len(observations) > 1 && cleanDate <= observations[len(observations)-1].ObservationDate {
 						continue
@@ -346,7 +346,7 @@ func getCountries(taxonID string, years []int) map[string]string {
 }
 
 // Clean observation date to be in the format of YYYY-MM-DD
-func cleanDate(date string) string {
+func CleanDate(date string) string {
 	if date == "" {
 		return ""
 	}

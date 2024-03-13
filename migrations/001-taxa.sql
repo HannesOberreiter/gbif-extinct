@@ -1,3 +1,4 @@
+/* Taxa backbone table */
 CREATE TABLE IF NOT EXISTS taxa (
     TaxonID BIGINT PRIMARY KEY,
 	ScientificName VARCHAR NOT NULL,

@@ -2,7 +2,7 @@
 
 ## A Tool for Exploring Global Biodiversity Information Facility (GBIF) Data with Enhanced Filtering Capabilities and Potential Applications in Uncovering "Forgotten Taxa"
 
-GBIF-Extinct introduces a tool that facilitates the exploration of the Global Biodiversity Information Facility (GBIF) data with unique filtering functionalities not readily available on the official GBIF website. The homepage enables users to search for the latest observation of specific taxa across different countries, offering insights into spatiotemporal distribution patterns. Users can refine their search by applying filters based on taxon name, taxonomic rank, and country.
+GBIF-Extinct introduces a tool that facilitates the exploration of the Global Biodiversity Information Facility (GBIF) data with unique filtering functionalities not readily available on the official GBIF website. The homepage enables users to search for the latest observation of specific taxa across different countries. Users can refine their search by applying filters based on taxon name, taxonomic rank, and country.
 
 This user-friendly interface provides several advantages:
 
@@ -65,6 +65,20 @@ Running the mutate script will fill the database with the latest backbone taxono
 
 ```bash
 go run ./scripts/mutate/mutate.go
+```
+
+### Other scripts
+
+The `cron` script does run manually a cron job on a defined TaxonID as a parameter or if no parameter is given it will run a few at random.
+
+```bash
+go run ./scripts/cron/cron.go <TaxonID>
+```
+
+The `import` script will import occurrence zip files from GBIF into the database. The format must be "simple", when exporting from GBIF. The script will take the path to the zip file as a parameter.
+
+```bash
+go run ./scripts/import/import.go <path-to-zip-file>
 ```
 
 ### Testing
