@@ -50,15 +50,27 @@ func main() {
 	moveToObservations()
 	updateLastFetchStatus()
 	clearImport()
+	clearObservations()
 
 	conn.Close()
 }
 
 // Clear import table after and before import
 func clearImport() {
+	slog.Info("Clearing import table")
 	_, err := conn.ExecContext(context.Background(), "DELETE FROM import")
 	if err != nil {
 		slog.Error("Failed to clear import table", err)
+		log.Fatal(err)
+	}
+}
+
+// Clear observations which have no taxon in taxa table
+func clearObservations() {
+	slog.Info("Clearing observations table")
+	_, err := conn.ExecContext(context.Background(), "DELETE FROM observations WHERE TaxonID NOT IN (SELECT TaxonID FROM taxa)")
+	if err != nil {
+		slog.Error("Failed to clear observations table", err)
 		log.Fatal(err)
 	}
 }
@@ -131,6 +143,14 @@ func importZIP(filePath string) {
 				continue
 			}
 
+			if data.TaxonID == "" || data.TaxonID == " " || data.TaxonID == "\\N" {
+				continue
+			}
+
+			if data.ObservationID == "" || data.ObservationID == " " || data.ObservationID == "\\N" {
+				continue
+			}
+
 			cleanDate := gbif.CleanDate(data.ObservationDateOriginal)
 
 			insertString := fmt.Sprintf("('%s', '%s', '%s', '%s', '%s')", safeQuotes(data.ObservationID), safeQuotes(data.TaxonID), safeQuotes(data.CountryCode), safeQuotes(data.ObservationDateOriginal), safeQuotes(cleanDate))
@@ -138,8 +158,8 @@ func importZIP(filePath string) {
 			tempArray = append(tempArray, insertString)
 			count++
 
-			if len(tempArray)%20000 == 0 {
-				slog.Info("Inserting batch records", "count", len(tempArray))
+			if len(tempArray)%100_000 == 0 {
+				slog.Info("Inserting batch records", "count", len(tempArray), "total", count)
 				insert(&tempArray, "import")
 			}
 		}
@@ -149,7 +169,7 @@ func importZIP(filePath string) {
 		}
 
 		if len(tempArray) > 0 {
-			slog.Info("Inserting last batch records", "count", len(tempArray))
+			slog.Info("Inserting last batch records", "count", len(tempArray), "total", count)
 			insert(&tempArray, "import")
 		}
 	}
@@ -214,14 +234,14 @@ func moveToObservations() {
 		tempArray = append(tempArray, insertString)
 		count++
 
-		if len(tempArray)%20000 == 0 {
-			slog.Info("Move batch records", "count", len(tempArray))
+		if len(tempArray)%100000 == 0 {
+			slog.Info("Move batch records", "count", len(tempArray), "total", count)
 			insert(&tempArray, "observations")
 		}
 	}
 
 	if len(tempArray) > 0 {
-		slog.Info("Moving last batch records", "count", len(tempArray))
+		slog.Info("Moving last batch records", "count", len(tempArray), "total", count)
 		insert(&tempArray, "observations")
 	}
 
