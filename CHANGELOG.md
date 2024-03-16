@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.1.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.0.0...v1.1.0) (2024-03-16)
+
+
+### Features
+
+* :sparkles: new import script ([#17](https://github.com/HannesOberreiter/gbif-extinct/issues/17)) ([4edc468](https://github.com/HannesOberreiter/gbif-extinct/commit/4edc46887bc657d7d84824eeb6a408335e937113))
+* ✨ nicer styles and loading spinner ([#14](https://github.com/HannesOberreiter/gbif-extinct/issues/14)) ([99bf63d](https://github.com/HannesOberreiter/gbif-extinct/commit/99bf63d476aeb9c2268b3fd089163ca65553f011))
+
+
+### Bug Fixes
+
+* :bug: add missing readme to container ([#10](https://github.com/HannesOberreiter/gbif-extinct/issues/10)) ([916d2b8](https://github.com/HannesOberreiter/gbif-extinct/commit/916d2b808431ce51616294dc77a86384891e98e0))
+* :bug: fix missing space for query ([#11](https://github.com/HannesOberreiter/gbif-extinct/issues/11)) ([fec0940](https://github.com/HannesOberreiter/gbif-extinct/commit/fec09403fc8450e0a29164345b30fb3a3856d4d0))
+* :bug: more safety checks before insert ([#18](https://github.com/HannesOberreiter/gbif-extinct/issues/18)) ([5e3f31f](https://github.com/HannesOberreiter/gbif-extinct/commit/5e3f31f201a5c55662f14b992074225c2d8e893e))
+* 🐛 stop reload full page on checkbox ([#6](https://github.com/HannesOberreiter/gbif-extinct/issues/6)) ([1f273c5](https://github.com/HannesOberreiter/gbif-extinct/commit/1f273c5c92af5c6fd7c7c4fbda6013dc1bf806f5))
+
+
+### Performance Improvements
+
+* :zap: increase scheduler frequency ([#8](https://github.com/HannesOberreiter/gbif-extinct/issues/8)) ([3642e51](https://github.com/HannesOberreiter/gbif-extinct/commit/3642e5136f8f032014e768e45a954777d643de2f))
+
+
+### Reverts
+
+* :rewind: change back scroll table ([#15](https://github.com/HannesOberreiter/gbif-extinct/issues/15)) ([eeaa8df](https://github.com/HannesOberreiter/gbif-extinct/commit/eeaa8dfdb70849bb83a45ce188c5908297654cd3))
+
 ## [1.0.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v0.0.1-alpha.0...v1.0.0) (2024-02-28)
 
 
