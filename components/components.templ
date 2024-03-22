@@ -311,7 +311,7 @@ templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages Pa
 }
 
 // About page
-templ PageAbout(){
+templ PageAbout(countTaxa, countLastFetched int){
 	@Page() {
 		<div class="container">
 			@templ.Raw(_aboutPage)
@@ -322,6 +322,8 @@ templ PageAbout(){
 				<li>Cron Interval: { fmt.Sprint(internal.Config.CronJobIntervalSec) } seconds</li>
 				<li>Taxa per Cron: { gbif.SampleRows }</li>
 				<li>User Agent Prefix: { internal.Config.UserAgentPrefix }</li>
+				<li>Total Taxa in DB: { printer.Sprintln(countTaxa) }</li>
+				<li>Fetched Taxa, past 12 months: { printer.Sprintln(countLastFetched) }</li>
 			</ul>
 		</div>
 

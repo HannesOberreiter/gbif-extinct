@@ -111,9 +111,12 @@ func index(c echo.Context) error {
 }
 
 func about(c echo.Context) error {
+	countTaxa := queries.GetCountTotalTaxa(internal.DB)
+	countLastFetched := queries.GetCountFetchedLastTwelveMonths(internal.DB)
+
 	return render(c,
 		http.StatusAccepted,
-		components.PageAbout())
+		components.PageAbout(countTaxa, countLastFetched))
 }
 
 /* Partials */
