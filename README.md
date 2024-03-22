@@ -20,6 +20,7 @@ The GBIF data is not perfect and contains errors and biases. The data is only as
 
 - We do not filter for data quality, and the data might contain errors, misidentifications, and outdated records.
 - We do not filter for data providers. Some data providers do upload unverified data (one example we found following dataset [gbif.org/dataset/6ac3f774-d9fb-4796-b3e9-92bf6c81c084](https://www.gbif.org/dataset/6ac3f774-d9fb-4796-b3e9-92bf6c81c084)).
+- We use "Preserved Specimen" as the event date can be the collection date but this assumption is not always true. The event date is sometimes the collection date. Even more problematic if fossils are marked as "Preserved Specimen" as example *Ursus spelaeus* [gbif.org/occurrence/3415351511](https://www.gbif.org/occurrence/3415351511).
 
 #### Completeness
 
