@@ -268,3 +268,21 @@ func getFieldValue(fieldValue reflect.Value) (interface{}, bool) {
 	}
 	return fieldValue.Interface(), true
 }
+
+func GetCountTotalTaxa(db *sql.DB) int {
+	var count int
+	err := sq.Select("COUNT(TaxonID)").From("taxa").Where(sq.Eq{"isSynonym": false}).RunWith(db).QueryRow().Scan(&count)
+	if err != nil {
+		slog.Error("Failed to get taxa count", "error", err)
+	}
+	return count
+}
+
+func GetCountFetchedLastTwelveMonths(db *sql.DB) int {
+	var count int
+	err := sq.Select("COUNT(TaxonID)").From("taxa").Where("LastFetch > CURRENT_DATE - INTERVAL 12 MONTH").Where(sq.Eq{"isSynonym": false}).RunWith(db).QueryRow().Scan(&count)
+	if err != nil {
+		slog.Error("Failed to get taxa count", "error", err)
+	}
+	return count
+}
