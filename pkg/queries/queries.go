@@ -20,7 +20,7 @@ type Query struct {
 	RANK          string
 	TAXA          string
 	PAGE          string
-	HIDE_SYNONYMS bool
+	SHOW_SYNONYMS bool
 }
 
 type Counts struct {
@@ -67,7 +67,7 @@ func NewQuery(payload any) Query {
 		RANK:          "",
 		TAXA:          "",
 		PAGE:          "1",
-		HIDE_SYNONYMS: false,
+		SHOW_SYNONYMS: false,
 	}
 
 	if payload != nil {
@@ -97,9 +97,9 @@ func NewQuery(payload any) Query {
 					q.TAXA = val.(string)
 				case "PAGE":
 					q.PAGE = val.(string)
-				case "HIDE_SYNONYMS":
+				case "SHOW_SYNONYMS":
 					if reflect.TypeOf(val).Kind() == reflect.Bool {
-						q.HIDE_SYNONYMS = val.(bool)
+						q.SHOW_SYNONYMS = val.(bool)
 					}
 				}
 			}
@@ -127,6 +127,7 @@ func GetCounts(db *sql.DB, q Query) Counts {
 		taxaCount = observationCount // There should be only one taxa per observation per country
 	} else {
 		taxaQuery := sq.Select("COUNT(DISTINCT taxa.SynonymID)").From("taxa")
+
 		createFilterQuery(&taxaQuery, q)
 		err = taxaQuery.RunWith(db).QueryRow().Scan(&taxaCount)
 		if err != nil {
@@ -165,10 +166,6 @@ func GetTableData(db *sql.DB, q Query, isCSV ...bool) []TableRow {
 			offset := PageLimit * (uint64(page) - 1)
 			query = query.Offset(offset)
 		}
-	}
-
-	if q.HIDE_SYNONYMS {
-		query = query.Where(sq.Eq{"isSynonym": false})
 	}
 
 	createFilterQuery(&query, q)
@@ -241,6 +238,10 @@ func countryCodeToFlag(x string) (country, flag string) {
 }
 
 func createFilterQuery(query *sq.SelectBuilder, q Query) {
+	if !q.SHOW_SYNONYMS {
+		*query = query.Where(sq.Or{sq.Eq{"isSynonym": false}, sq.Eq{"SynonymID": nil}})
+	}
+
 	if q.SEARCH != "" {
 		*query = query.Where(sq.ILike{"ScientificName": "%" + q.SEARCH + "%"})
 	}
