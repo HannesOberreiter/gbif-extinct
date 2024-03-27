@@ -26,7 +26,7 @@ func TestQuery(t *testing.T) {
 	q := Query{
 		ORDER_BY:      "Date",
 		ORDER_DIR:     "ASC",
-		HIDE_SYNONYMS: false,
+		SHOW_SYNONYMS: false,
 	}
 
 	counts := GetCounts(internal.DB, q)
@@ -39,14 +39,14 @@ func TestQuery(t *testing.T) {
 	}
 
 	table := GetTableData(internal.DB, q)
-	if len(table) != 2 {
-		t.Errorf("got %d, wanted %d", len(table), 2)
-	}
-
-	q.HIDE_SYNONYMS = true
-	table = GetTableData(internal.DB, q)
 	if len(table) != 1 {
 		t.Errorf("got %d, wanted %d", len(table), 1)
+	}
+
+	q.SHOW_SYNONYMS = true
+	table = GetTableData(internal.DB, q)
+	if len(table) != 2 {
+		t.Errorf("got %d, wanted %d", len(table), 2)
 	}
 
 	if table[0].TaxonID != DemoTaxa[0] {

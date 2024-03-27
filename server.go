@@ -96,7 +96,7 @@ type Payload struct {
 	RANK          *string `query:"rank"`
 	TAXA          *string `query:"taxa"`
 	PAGE          *string `query:"page"`
-	HIDE_SYNONYMS *bool   `query:"hide_synonyms"`
+	SHOW_SYNONYMS *bool   `query:"show_synonyms"`
 }
 
 /* Pages */
