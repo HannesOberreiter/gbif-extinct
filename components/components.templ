@@ -43,7 +43,7 @@ func CalculatePages(counts queries.Counts, q queries.Query) PagesString {
 		}
 	
 
-	response.LAST = int(math.Ceil(float64(counts.TaxaCount) / float64(queries.PageLimit)))
+	response.LAST = int(math.Ceil(float64(counts.TaxaCount) / float64(queries.DefaultPageLimit)))
 	if response.CURRENT == response.LAST {
 		response.NEXT = response.LAST
 		response.PREVIOUS = response.LAST - 1
@@ -183,6 +183,9 @@ templ Filter(){
 			<button class="uppercase tracking-wide hover:font-bold border px-1" onclick={ baseUrl() }>
     			Clear
 			</button>
+			<button class="uppercase tracking-wide hover:font-bold border px-1 ml-1" id="downloadBtn">
+				Download
+			</button>
 		</div>
 	</form>
 }
@@ -296,8 +299,8 @@ templ Table(rows TableRows, q queries.Query, counts queries.Counts, pages PagesS
 }
 
 // Index landing page with table
-templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages PagesString){
-		@Page() {
+templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages PagesString, cacheBuster int64){
+		@Page(cacheBuster) {
 			<div>
     			<section>
 					@Filter()
@@ -311,8 +314,8 @@ templ PageTable(rows TableRows, q queries.Query, counts queries.Counts, pages Pa
 }
 
 // About page
-templ PageAbout(countTaxa, countLastFetched int){
-	@Page() {
+templ PageAbout(countTaxa, countLastFetched int, cacheBuster int64){
+	@Page(cacheBuster) {
 		<div class="container">
 			@templ.Raw(_aboutPage)
 			
@@ -332,14 +335,14 @@ templ PageAbout(countTaxa, countLastFetched int){
 }
 
 // Main Page table wrapped around pages
-templ Page() {
+templ Page(cacheBuster int64) {
 	<html>
 		<head>
 			<meta charset="UTF-8"/>
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 			<title>GBIF - Latest Observation</title>
-            <link href="/assets/css/main.css" rel="stylesheet" />
-			<script src="/assets/js/htmx.min.js" />
+            <link href={fmt.Sprintf("/assets/css/main.css?=%d", cacheBuster)} rel="stylesheet" />
+			<script src={fmt.Sprintf("/assets/js/htmx.min.js?=%d", cacheBuster)} />
 		</head>
 		<body class="prose font-mono">
 			<div class="p-4">
@@ -357,5 +360,5 @@ templ Page() {
 
 		</body>
 	</html>
-	<script src="/assets/js/main.js" />
+	<script src={fmt.Sprintf("/assets/js/main.js?=%d", cacheBuster)} />
 }
