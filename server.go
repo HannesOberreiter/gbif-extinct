@@ -20,6 +20,7 @@ import (
 )
 
 var scheduler gocron.Scheduler
+var cacheBuster = time.Now().Unix()
 
 func main() {
 
@@ -106,7 +107,7 @@ func index(c echo.Context) error {
 
 	return render(c,
 		http.StatusAccepted,
-		components.PageTable(queries.GetTableData(internal.DB, q), q, counts, components.CalculatePages(counts, q)))
+		components.PageTable(queries.GetTableData(internal.DB, q), q, counts, components.CalculatePages(counts, q), cacheBuster))
 
 }
 
@@ -116,7 +117,7 @@ func about(c echo.Context) error {
 
 	return render(c,
 		http.StatusAccepted,
-		components.PageAbout(countTaxa, countLastFetched))
+		components.PageAbout(countTaxa, countLastFetched, cacheBuster))
 }
 
 /* Partials */
@@ -185,12 +186,15 @@ func fetch(c echo.Context) error {
 
 // Download data as CSV
 func download(c echo.Context) error {
-	// q := buildQuery(c)
-	return c.String(http.StatusOK, "Download not implemented")
-	/*data := internal.GetTableData(payload, true)
+
+	q := buildQuery(c)
+	table := queries.GetTableData(internal.DB, q, true)
+	csv := queries.CreateCSV(table)
+
 	c.Response().Header().Set("Content-Disposition", "attachment; filename=extinct.csv")
 	c.Response().Header().Set("Content-Type", "text/csv")
-	return internal.WriteCSV(c.Response().Writer, data)*/
+	c.Response().Header().Set("Content-Encoding", "gzip")
+	return c.String(http.StatusOK, csv)
 }
 
 // Setup cron scheduler

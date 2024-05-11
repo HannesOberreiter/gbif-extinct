@@ -55,7 +55,8 @@ var _taxonRankMap = map[string]string{"kingdom": "TaxonKingdom", "phylum": "Taxo
 
 var _selectArray = []string{"taxa.TaxonID", "ScientificName", "CountryCode", "LastFetch", "ObservationID", "ObservationDate", "TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily", "isSynonym", "SynonymName", "SynonymID"}
 
-const PageLimit = uint64(100)
+const DefaultPageLimit = uint64(100)
+const IncreasedPageLimit = uint64(10_000)
 
 // Create a new query object with default values or set values from payload struct
 func NewQuery(payload any) Query {
@@ -140,8 +141,12 @@ func GetCounts(db *sql.DB, q Query) Counts {
 }
 
 // Get the table data based on the query
-func GetTableData(db *sql.DB, q Query, isCSV ...bool) []TableRow {
-	query := sq.Select(_selectArray...).From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.SynonymID").Limit(PageLimit)
+func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
+	query := sq.Select(_selectArray...).From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.SynonymID").Limit(DefaultPageLimit)
+
+	if increaseLimit != nil && increaseLimit[0] {
+		query = query.Limit(IncreasedPageLimit)
+	}
 
 	var direction string
 	if q.ORDER_DIR == "asc" {
@@ -163,7 +168,7 @@ func GetTableData(db *sql.DB, q Query, isCSV ...bool) []TableRow {
 		if err != nil {
 			slog.Error("Failed to parse page", "error", err)
 		} else {
-			offset := PageLimit * (uint64(page) - 1)
+			offset := DefaultPageLimit * (uint64(page) - 1)
 			query = query.Offset(offset)
 		}
 	}
@@ -215,9 +220,16 @@ func GetTableData(db *sql.DB, q Query, isCSV ...bool) []TableRow {
 	return result
 }
 
-/*func createCSVHeader() string {
-	return strings.Join(SelectArray, ",") + "\n"
-}*/
+// Create a CSV string from the table data, this is used for exporting data
+func CreateCSV(rows []TableRow) string {
+	var csv string
+	csv += strings.Join(_selectArray, ",") + "\n"
+	for _, row := range rows {
+		/* Needs to be same order as _selectArray */
+		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%t,%s,%s\n", row.TaxonID, row.ScientificName.String, row.CountryCode.String, row.LastFetch.Time.Format("2006-01-02"), row.ObservationID.String, row.ObservationDate.Time.Format("2006-01-02"), row.TaxonKingdom, row.TaxonPhylum, row.TaxonClass, row.TaxonOrder, row.TaxonFamily, row.IsSynonym, row.SynonymName.String, row.SynonymID.String)
+	}
+	return csv
+}
 
 func calculateTimeSinceYears(t time.Time) string {
 	years := time.Since(t).Hours() / 24 / 365

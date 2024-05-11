@@ -74,6 +74,27 @@ func TestNewQuery(t *testing.T) {
 	}
 }
 
+func TestConvertCSV(t *testing.T) {
+	loadDemo()
+	q := Query{
+		ORDER_BY:      "Date",
+		ORDER_DIR:     "ASC",
+		SHOW_SYNONYMS: false,
+		SEARCH:        "Urocerus gigas",
+	}
+
+	table := GetTableData(internal.DB, q)
+	csv := CreateCSV(table)
+	/* Header */
+	if !strings.Contains(csv, "TaxonID,ScientificName") {
+		t.Errorf("got %s, wanted %s", csv, "TaxonID,ScientificName")
+	}
+	/* Data */
+	if !strings.Contains(csv, "4492208,Urocerus gigas") {
+		t.Errorf("got %s, wanted %s", csv, "4492208,Urocerus gigas")
+	}
+}
+
 // Helper to setup memory database and data
 func loadDemo() {
 	slog.SetLogLoggerLevel(slog.LevelError)
