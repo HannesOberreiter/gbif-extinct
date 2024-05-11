@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.1.0...v1.2.0) (2024-05-11)
+
+
+### Features
+
+* :sparkles: add more info to about page ([#19](https://github.com/HannesOberreiter/gbif-extinct/issues/19)) ([cf18c3e](https://github.com/HannesOberreiter/gbif-extinct/commit/cf18c3ef16b4ef229eea8fb1ce6ae8966ea472d4))
+* :sparkles: change synonyms logic to default to no synonyms ([#23](https://github.com/HannesOberreiter/gbif-extinct/issues/23)) ([cc0dea8](https://github.com/HannesOberreiter/gbif-extinct/commit/cc0dea81e607ef89323e3b6381bc5515af06cd22))
+* ✨ added new button to download result as csv and added a cache buster to assets ([#25](https://github.com/HannesOberreiter/gbif-extinct/issues/25)) ([df309fb](https://github.com/HannesOberreiter/gbif-extinct/commit/df309fb83d10e68107944c2ecfd66d02c43e3e47))
+* 📝 add note about Preserved Specimen ([#21](https://github.com/HannesOberreiter/gbif-extinct/issues/21)) ([e1271be](https://github.com/HannesOberreiter/gbif-extinct/commit/e1271be128036c5cc8cd6608edd8369aafd97905))
+
 ## [1.1.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.0.0...v1.1.0) (2024-03-16)
 
 
