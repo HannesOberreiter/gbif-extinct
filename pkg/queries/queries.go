@@ -56,7 +56,7 @@ var _taxonRankMap = map[string]string{"kingdom": "TaxonKingdom", "phylum": "Taxo
 var _selectArray = []string{"taxa.TaxonID", "ScientificName", "CountryCode", "LastFetch", "ObservationID", "ObservationDate", "TaxonKingdom", "TaxonPhylum", "TaxonClass", "TaxonOrder", "TaxonFamily", "isSynonym", "SynonymName", "SynonymID"}
 
 const DefaultPageLimit = uint64(100)
-const IncreasedPageLimit = uint64(10_000)
+const IncreasedPageLimit = uint64(1_000)
 
 // Create a new query object with default values or set values from payload struct
 func NewQuery(payload any) Query {

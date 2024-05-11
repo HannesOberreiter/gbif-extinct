@@ -31,7 +31,7 @@ function updateFields(){
 const downloadButton = document.getElementById('downloadBtn');
 downloadButton.addEventListener('click', onDownloadClick);
 function onDownloadClick() {
-    if (!confirm('Do you want to the search result as csv file (max. 10_000 rows)?')) {
+    if (!confirm('Do you want to the search result as csv file (max. 1_000 rows)?')) {
         return;
     }
     const downloadUrl = "/download" + new URL(window.location.href).search;
