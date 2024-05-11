@@ -225,8 +225,33 @@ func CreateCSV(rows []TableRow) string {
 	var csv string
 	csv += strings.Join(_selectArray, ",") + "\n"
 	for _, row := range rows {
+		scientificName := ""
+		if row.ScientificName.Valid {
+			scientificName = row.ScientificName.String
+		}
+		countryCode := ""
+		if row.CountryCode.Valid {
+			countryCode = row.CountryCode.String
+		}
+		observationID := ""
+		if row.ObservationID.Valid {
+			observationID = row.ObservationID.String
+		}
+		observationDate := ""
+		if row.ObservationDate.Valid {
+			observationDate = row.ObservationDate.Time.Format("2006-01-02")
+		}
+		synonymName := ""
+		if row.SynonymName.Valid {
+			synonymName = row.SynonymName.String
+		}
+		synonymID := ""
+		if row.SynonymID.Valid {
+			synonymID = row.SynonymID.String
+		}
 		/* Needs to be same order as _selectArray */
-		csv += fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%t,%s,%s\n", row.TaxonID, row.ScientificName.String, row.CountryCode.String, row.LastFetch.Time.Format("2006-01-02"), row.ObservationID.String, row.ObservationDate.Time.Format("2006-01-02"), row.TaxonKingdom, row.TaxonPhylum, row.TaxonClass, row.TaxonOrder, row.TaxonFamily, row.IsSynonym, row.SynonymName.String, row.SynonymID.String)
+		csv += fmt.Sprintf(
+			"%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%t,%s,%s\n", row.TaxonID, scientificName, countryCode, row.LastFetch.Time.Format("2006-01-02"), observationID, observationDate, row.TaxonKingdom, row.TaxonPhylum, row.TaxonClass, row.TaxonOrder, row.TaxonFamily, row.IsSynonym, synonymName, synonymID)
 	}
 	return csv
 }

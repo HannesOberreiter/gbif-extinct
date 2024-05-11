@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -191,9 +193,10 @@ func download(c echo.Context) error {
 	table := queries.GetTableData(internal.DB, q, true)
 	csv := queries.CreateCSV(table)
 
-	c.Response().Header().Set("Content-Disposition", "attachment; filename=extinct.csv")
+	filename := fmt.Sprintf("extinct-%s-%s.csv", time.Now().Format("2006-01-02"), strings.ReplaceAll(c.QueryString(), "&", "-"))
+
+	c.Response().Header().Set("Content-Disposition", "attachment; filename="+filename)
 	c.Response().Header().Set("Content-Type", "text/csv")
-	c.Response().Header().Set("Content-Encoding", "gzip")
 	return c.String(http.StatusOK, csv)
 }
 
