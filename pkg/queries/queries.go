@@ -220,6 +220,7 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 	return result
 }
 
+// Create a CSV string from the table data, this is used for exporting data
 func CreateCSV(rows []TableRow) string {
 	var csv string
 	csv += strings.Join(_selectArray, ",") + "\n"
