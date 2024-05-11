@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.1...v1.2.2) (2024-05-11)
+
+
+### Bug Fixes
+
+* :ambulance: reduce rows to prevent errors ([#28](https://github.com/HannesOberreiter/gbif-extinct/issues/28)) ([95044a5](https://github.com/HannesOberreiter/gbif-extinct/commit/95044a5c92101b8d583c09269fb4195ae42b58f5))
+
 ## [1.2.1](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.0...v1.2.1) (2024-05-11)
 
 
