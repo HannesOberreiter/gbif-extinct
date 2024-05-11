@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.0...v1.2.1) (2024-05-11)
+
+
+### Bug Fixes
+
+* :bug: remove gzip and fix nil errors ([#26](https://github.com/HannesOberreiter/gbif-extinct/issues/26)) ([bcaaead](https://github.com/HannesOberreiter/gbif-extinct/commit/bcaaead490785bf60b792273e4f38cdb8430417d))
+
 ## [1.2.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.1.0...v1.2.0) (2024-05-11)
 
 
