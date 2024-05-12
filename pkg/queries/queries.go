@@ -10,6 +10,8 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Query struct {
@@ -117,12 +119,16 @@ func GetCounts(db *sql.DB, q Query) Counts {
 	var taxaCount int
 	var observationCount int
 
-	observationQuery := sq.Select("COUNT(DISTINCT(observations.TaxonID, observations.CountryCode))").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.SynonymID")
+	observationQuery := sq.Select("COUNT(*)").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.SynonymID AND taxa.isSynonym = false")
 	createFilterQuery(&observationQuery, q)
+	// print the query
+	fmt.Println(observationQuery.ToSql())
+
 	err = observationQuery.RunWith(db).QueryRow().Scan(&observationCount)
 	if err != nil {
 		slog.Error("Failed to get observation count", "error", err)
 	}
+	fmt.Println("Observation count: ", observationCount)
 
 	if q.COUNTRY != "" {
 		taxaCount = observationCount // There should be only one taxa per observation per country
@@ -130,10 +136,14 @@ func GetCounts(db *sql.DB, q Query) Counts {
 		taxaQuery := sq.Select("COUNT(DISTINCT taxa.SynonymID)").From("taxa")
 
 		createFilterQuery(&taxaQuery, q)
+
+		fmt.Println(taxaQuery.ToSql())
+
 		err = taxaQuery.RunWith(db).QueryRow().Scan(&taxaCount)
 		if err != nil {
 			slog.Error("Failed to get taxa count", "error", err)
 		}
+		fmt.Println("Taxa count: ", taxaCount)
 	}
 
 	counts := Counts{taxaCount, observationCount}
@@ -142,7 +152,25 @@ func GetCounts(db *sql.DB, q Query) Counts {
 
 // Get the table data based on the query
 func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
-	query := sq.Select(_selectArray...).From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.SynonymID").Limit(DefaultPageLimit)
+
+	taxaQuery := sq.Select("*").From("taxa")
+	if !q.SHOW_SYNONYMS {
+		taxaQuery = taxaQuery.Where(sq.Eq{"isSynonym": false})
+	}
+	if q.SEARCH != "" {
+		searchString := cases.Title(language.Und, cases.NoLower).String(q.SEARCH)
+		taxaQuery = taxaQuery.Where(sq.Like{"ScientificName": searchString + "%"})
+	}
+	if q.RANK != "" {
+		if q.TAXA != "" {
+			if _taxonRankMap[strings.ToLower(q.RANK)] != "" {
+				slog.Info("Rank", "rank", _taxonRankMap[strings.ToLower(q.RANK)])
+				taxaQuery = taxaQuery.Where(sq.Like{_taxonRankMap[strings.ToLower(q.RANK)]: q.TAXA + "%"})
+			}
+		}
+	}
+
+	query := sq.Select(_selectArray...).From("observations").JoinClause(taxaQuery.Prefix("RIGHT JOIN (").Suffix(") as taxa ON observations.TaxonID = taxa.SynonymID")).Limit(DefaultPageLimit)
 
 	if increaseLimit != nil && increaseLimit[0] {
 		query = query.Limit(IncreasedPageLimit)
@@ -175,11 +203,14 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 
 	createFilterQuery(&query, q)
 
+	// print the query
+	fmt.Println(query.ToSql())
+
 	rows, err := query.RunWith(db).Query()
 
 	var result []TableRow
 	if err != nil {
-		slog.Error("Failed to get outdated observations", "error", err)
+		slog.Error("Failed to get observations", "error", err)
 		return result
 	}
 	for rows.Next() {
@@ -211,7 +242,7 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 		}
 
 		if err != nil {
-			slog.Error("Failed to get outdated observations", "error", err)
+			slog.Error("Failed to get observations", "error", err)
 		}
 
 		result = append(result, row)
@@ -275,25 +306,22 @@ func countryCodeToFlag(x string) (country, flag string) {
 }
 
 func createFilterQuery(query *sq.SelectBuilder, q Query) {
-	if !q.SHOW_SYNONYMS {
-		*query = query.Where(sq.Or{sq.Eq{"isSynonym": false}, sq.Eq{"SynonymID": nil}})
-	}
-
-	if q.SEARCH != "" {
-		*query = query.Where(sq.ILike{"ScientificName": "%" + q.SEARCH + "%"})
-	}
+	/*if q.SEARCH != "" {
+		searchString := cases.Title(language.Und, cases.NoLower).String(q.SEARCH)
+		*query = query.Where(sq.Like{"ScientificName": searchString + "%"})
+	}*/
 	if q.COUNTRY != "" {
 		*query = query.Where(sq.Eq{"CountryCode": strings.ToUpper(q.COUNTRY)})
 	}
-
-	if q.RANK != "" {
-		if q.TAXA != "" {
-			if _taxonRankMap[strings.ToLower(q.RANK)] != "" {
-				slog.Info("Rank", "rank", _taxonRankMap[strings.ToLower(q.RANK)])
-				*query = query.Where(sq.ILike{_taxonRankMap[strings.ToLower(q.RANK)]: q.TAXA + "%"})
+	/*
+		if q.RANK != "" {
+			if q.TAXA != "" {
+				if _taxonRankMap[strings.ToLower(q.RANK)] != "" {
+					slog.Info("Rank", "rank", _taxonRankMap[strings.ToLower(q.RANK)])
+					*query = query.Where(sq.Like{_taxonRankMap[strings.ToLower(q.RANK)]: q.TAXA + "%"})
+				}
 			}
-		}
-	}
+		}*/
 }
 
 // Get the value of a field, handling pointers
@@ -312,15 +340,17 @@ func GetCountTotalTaxa(db *sql.DB) int {
 	err := sq.Select("COUNT(TaxonID)").From("taxa").Where(sq.Eq{"isSynonym": false}).RunWith(db).QueryRow().Scan(&count)
 	if err != nil {
 		slog.Error("Failed to get taxa count", "error", err)
+		return 0
 	}
 	return count
 }
 
 func GetCountFetchedLastTwelveMonths(db *sql.DB) int {
 	var count int
-	err := sq.Select("COUNT(TaxonID)").From("taxa").Where("LastFetch > CURRENT_DATE - INTERVAL 12 MONTH").Where(sq.Eq{"isSynonym": false}).RunWith(db).QueryRow().Scan(&count)
+	err := sq.Select("COUNT(TaxonID)").From("taxa").Where("LastFetch > date('now', '-12 month')").Where(sq.Eq{"isSynonym": false}).RunWith(db).QueryRow().Scan(&count)
 	if err != nil {
 		slog.Error("Failed to get taxa count", "error", err)
+		return 0
 	}
 	return count
 }

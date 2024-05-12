@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 )
 
 var migrationsDir = "./migrations"
@@ -53,6 +54,15 @@ func Migrations(db *sql.DB, migrationsPath string) {
 	for _, query := range queries {
 		_, err = tx.Exec(query)
 		if err != nil {
+			/* SQLLite does not support IF NOT EXISTS for columns */
+			if strings.Contains(err.Error(), "duplicate column name") {
+				continue
+			}
+			/* Index Error */
+			if strings.Contains(err.Error(), "already exists") {
+				continue
+			}
+
 			slog.Error("Failed to run migration", "error", err, "query", query)
 			return
 		}

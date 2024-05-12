@@ -1,4 +1,5 @@
 // Manually upload observations from gbif simple file download.
+// ToDo: This script is not adapted for sqlite3
 package main
 
 import (

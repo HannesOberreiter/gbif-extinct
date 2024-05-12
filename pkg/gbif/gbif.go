@@ -205,8 +205,9 @@ func GetOutdatedObservations(db *sql.DB) []string {
 	rows, err := db.Query(`
 		SELECT TaxonID 
 		FROM taxa  
-		WHERE (6 > date_diff('month', today(), LastFetch) OR LastFetch IS NULL) AND isSynonym = FALSE
-		USING SAMPLE ` + SampleRows + ` ROWS`)
+		WHERE ((julianday('now') - julianday(LastFetch)) > 180 OR LastFetch IS NULL) AND isSynonym = 0
+		ORDER BY RANDOM() 
+		LIMIT ` + SampleRows)
 	var taxonIDs []string
 	if err != nil {
 		slog.Error("Failed to get outdated observations", "error", err)

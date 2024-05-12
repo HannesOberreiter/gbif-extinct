@@ -5,7 +5,7 @@ import (
 	"log"
 	"log/slog"
 
-	_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/mattn/go-sqlite3" // Import go-sqlite3 library
 	"github.com/spf13/viper"
 )
 
@@ -42,11 +42,17 @@ func loadDb() {
 		dbPath = Config.ROOT + Config.SqlPath
 	}
 
-	DB, err = sql.Open("duckdb", dbPath)
+	DB, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
 		slog.Debug("Failed to connect to database.", "path", dbPath)
 		log.Fatal(err)
 	}
+
+	DB.Exec("PRAGMA foreign_keys = ON;")
+	DB.Exec("pragma journal_mode = WAL;")
+	DB.Exec("pragma synchronous = normal;")
+	DB.Exec("pragma journal_size_limit = 6144000;")
+
 	slog.Info("Connected to database.", "path", dbPath)
 }
 
@@ -56,7 +62,7 @@ func loadDb() {
 func loadEnv() {
 	slog.Debug("Loading environment variables")
 
-	viper.SetDefault("SQL_PATH", "/db/duck.db")
+	viper.SetDefault("SQL_PATH", "/db/lite.db")
 	viper.SetDefault("TAXON_BACKBONE_PATH", "/Taxon.tsv")
 	viper.SetDefault("TAXON_SIMPLE_PATH", "/simple.txt")
 	viper.SetDefault("USER_AGENT_PREFIX", "local")

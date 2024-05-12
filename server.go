@@ -116,6 +116,7 @@ func index(c echo.Context) error {
 func about(c echo.Context) error {
 	countTaxa := queries.GetCountTotalTaxa(internal.DB)
 	countLastFetched := queries.GetCountFetchedLastTwelveMonths(internal.DB)
+	slog.Info("About page", "taxa", countTaxa, "lastFetched", countLastFetched)
 
 	return render(c,
 		http.StatusAccepted,
@@ -127,8 +128,30 @@ func table(c echo.Context) error {
 	q := buildQuery(c)
 	querystring := c.QueryString()
 
-	table := queries.GetTableData(internal.DB, q)
-	counts := queries.GetCounts(internal.DB, q)
+	tableChan := make(chan []queries.TableRow)
+	countsChan := make(chan queries.Counts)
+
+	go func() {
+		table := queries.GetTableData(internal.DB, q)
+		tableChan <- table
+	}()
+
+	go func() {
+		counts := queries.GetCounts(internal.DB, q)
+		countsChan <- counts
+	}()
+
+	table := <-tableChan
+	slog.Warn("Table data", "query", q, "count", len(table))
+
+	counts := <-countsChan
+	slog.Warn("Counts", "counts", counts)
+
+	//table := queries.GetTableData(internal.DB, q)
+	slog.Warn("Table data", "query", q, "count", len(table))
+
+	// counts := queries.GetCounts(internal.DB, q)
+	slog.Warn("Counts", "counts", counts)
 
 	if c.Request().Header.Get("HX-Request") == "" {
 		return c.JSON(http.StatusOK, table)
