@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/HannesOberreiter/gbif-extinct/internal"
 	"github.com/HannesOberreiter/gbif-extinct/pkg/gbif"
@@ -40,15 +38,5 @@ func main() {
 		return
 	}
 
-	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	conn, err := internal.DB.Conn(ctx)
-	if err != nil {
-		slog.Error("Failed to create connection", err)
-		return
-	}
-	defer conn.Close()
-
-	gbif.SaveObservation(results, conn, ctx)
-	cancel()
+	gbif.SaveObservation(results, internal.DB)
 }

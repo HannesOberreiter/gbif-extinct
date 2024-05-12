@@ -3,7 +3,6 @@
 package gbif
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -27,7 +26,7 @@ var (
 	occurrenceStatus = "occurrenceStatus=PRESENT"
 )
 
-const SampleRows = "5"
+const SampleRows = "25"
 
 // Response is the response from the GBIF API for the occurrence search
 type Response struct {
@@ -162,25 +161,21 @@ func FetchLatest(taxonID string) []LatestObservation {
 // SaveObservation saves the latest observation for each taxon
 // It first clears the old observations for each taxon before inserting the new ones
 // to improve performance each insert contains alls new observations for this taxa at once
-func SaveObservation(observation [][]LatestObservation, conn *sql.Conn, ctx context.Context) {
+func SaveObservation(observation [][]LatestObservation, db *sql.DB) {
 	slog.Info("Updating observations", "taxa", len(observation))
 	const stmt = "INSERT INTO observations (ObservationID, TaxonID, CountryCode, ObservationDate, ObservationDateOriginal) VALUES"
 	for _, res := range observation {
 		var insertString []string
-		clearOldObservations(conn, ctx, res[0].TaxonID)
+		clearOldObservations(db, res[0].TaxonID)
 		slog.Info("Inserting new for taxaId", "observations", len(res), "taxaId", res[0].TaxonID)
 		for _, obs := range res {
 			insertString = append(insertString, fmt.Sprintf("('%s', '%s', '%s', '%s', '%s')", obs.ObservationID, obs.TaxonID, obs.CountryCode, obs.ObservationDate, obs.ObservationOriginalDate))
 		}
 		query := stmt + strings.Join(insertString, ",") + " ON CONFLICT DO NOTHING;"
-		_, err := conn.ExecContext(ctx, query)
+		_, err := db.Exec(query)
 		if err != nil {
 			slog.Error("Database error on inserting new observations", err)
 		}
-	}
-	err := conn.Close()
-	if err != nil {
-		slog.Error("Failed to close connection", err)
 	}
 }
 
@@ -374,8 +369,8 @@ func CleanDate(date string) string {
 
 // We are only interested in the latest observation for each taxon, so we clear the old ones before inserting new ones
 // runs in the same transaction as SaveObservation
-func clearOldObservations(conn *sql.Conn, ctx context.Context, taxonID string) {
-	res, err := conn.ExecContext(ctx, "DELETE FROM observations WHERE TaxonID = ?", taxonID)
+func clearOldObservations(db *sql.DB, taxonID string) {
+	res, err := db.Exec("DELETE FROM observations WHERE TaxonID = ?", taxonID)
 	if err != nil {
 		slog.Error("Database error on clearing old observations", err)
 	}

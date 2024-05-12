@@ -117,7 +117,8 @@ func GetCounts(db *sql.DB, q Query) Counts {
 	var taxaCount int
 	var observationCount int
 
-	observationQuery := sq.Select("COUNT(DISTINCT(observations.TaxonID, observations.CountryCode))").From("observations").LeftJoin("taxa ON observations.TaxonID = taxa.SynonymID")
+	observationQuery := sq.Select("COUNT(*)").From("observations").InnerJoin("taxa ON observations.TaxonID = taxa.TaxonID")
+
 	createFilterQuery(&observationQuery, q)
 	err = observationQuery.RunWith(db).QueryRow().Scan(&observationCount)
 	if err != nil {
@@ -127,7 +128,7 @@ func GetCounts(db *sql.DB, q Query) Counts {
 	if q.COUNTRY != "" {
 		taxaCount = observationCount // There should be only one taxa per observation per country
 	} else {
-		taxaQuery := sq.Select("COUNT(DISTINCT taxa.SynonymID)").From("taxa")
+		taxaQuery := sq.Select("COUNT(*)").From("taxa").Where(sq.Eq{"isSynonym": false})
 
 		createFilterQuery(&taxaQuery, q)
 		err = taxaQuery.RunWith(db).QueryRow().Scan(&taxaCount)
@@ -171,6 +172,10 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 			offset := DefaultPageLimit * (uint64(page) - 1)
 			query = query.Offset(offset)
 		}
+	}
+
+	if !q.SHOW_SYNONYMS {
+		query = query.Where(sq.Or{sq.Eq{"isSynonym": false}})
 	}
 
 	createFilterQuery(&query, q)
@@ -275,10 +280,6 @@ func countryCodeToFlag(x string) (country, flag string) {
 }
 
 func createFilterQuery(query *sq.SelectBuilder, q Query) {
-	if !q.SHOW_SYNONYMS {
-		*query = query.Where(sq.Or{sq.Eq{"isSynonym": false}, sq.Eq{"SynonymID": nil}})
-	}
-
 	if q.SEARCH != "" {
 		*query = query.Where(sq.ILike{"ScientificName": "%" + q.SEARCH + "%"})
 	}

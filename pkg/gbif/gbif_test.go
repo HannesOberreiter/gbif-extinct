@@ -1,7 +1,6 @@
 package gbif
 
 import (
-	"context"
 	"database/sql"
 	"log"
 	"log/slog"
@@ -60,17 +59,10 @@ func TestSaveObservations(t *testing.T) {
 	var observations [][]LatestObservation
 	observations = append(observations, []LatestObservation{observation})
 
-	ctx := context.Background()
-	conn, err := internal.DB.Conn(ctx)
-	if err != nil {
-		slog.Error("Failed to create connection", err)
-	}
-	defer conn.Close()
-
-	SaveObservation(observations, conn, ctx)
+	SaveObservation(observations, internal.DB)
 
 	var count int
-	err = internal.DB.QueryRow("SELECT COUNT(*) FROM observations WHERE TaxonID = ?", DemoTaxa[0]).Scan(&count)
+	err := internal.DB.QueryRow("SELECT COUNT(*) FROM observations WHERE TaxonID = ?", DemoTaxa[0]).Scan(&count)
 	if err != nil {
 		log.Fatal(err)
 	}
