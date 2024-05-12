@@ -169,18 +169,9 @@ func fetch(c echo.Context) error {
 		return c.String(http.StatusNotFound, "No data found")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	conn, err := internal.DB.Conn(ctx)
-	if err != nil {
-		slog.Error("Failed to create connection", err)
-		cancel()
-		return c.String(http.StatusInternalServerError, "Failed database connection")
-	}
-	defer conn.Close()
 	var results [][]gbif.LatestObservation
 	results = append(results, res)
-	gbif.SaveObservation(results, conn, ctx)
-	cancel()
+	gbif.SaveObservation(results, internal.DB)
 
 	c.Response().Header().Set("HX-Trigger", "filterSubmit")
 	return c.String(http.StatusOK, "Updated")
@@ -246,18 +237,7 @@ func cronFetch() {
 		return
 	}
 
-	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	conn, err := internal.DB.Conn(ctx)
-	if err != nil {
-		slog.Error("Failed to create connection", err)
-		cancel()
-		return
-	}
-	defer conn.Close()
-
-	gbif.SaveObservation(results, conn, ctx)
-	cancel()
+	gbif.SaveObservation(results, internal.DB)
 }
 
 // Utility function to render a template
