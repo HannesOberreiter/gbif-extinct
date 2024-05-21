@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.2...v1.3.0) (2024-05-21)
+
+
+### Features
+
+* :art: add icons and logo ([#32](https://github.com/HannesOberreiter/gbif-extinct/issues/32)) ([996f266](https://github.com/HannesOberreiter/gbif-extinct/commit/996f26623a608d117db7856beff47f039ae63f60))
+
+
+### Performance Improvements
+
+* :zap: increase perf of counts and remove connection to prevent locking ([#30](https://github.com/HannesOberreiter/gbif-extinct/issues/30)) ([cbbefb9](https://github.com/HannesOberreiter/gbif-extinct/commit/cbbefb925c64a6f06c60148f2ff9a689c2e0e75d))
+
 ## [1.2.2](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.1...v1.2.2) (2024-05-11)
 
 
