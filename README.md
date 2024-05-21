@@ -1,5 +1,9 @@
 # GBIF - Extinct
 
+<p align="center">
+  <img width="180" height="180" src="/assets/icons/apple-touch-icon-180x180.png">
+</p>
+
 ## A Tool for Exploring Global Biodiversity Information Facility (GBIF) Data with Enhanced Filtering Capabilities and Potential Applications in Uncovering "Forgotten Taxa"
 
 GBIF-Extinct introduces a tool that facilitates the exploration of the Global Biodiversity Information Facility (GBIF) data with unique filtering functionalities not readily available on the official GBIF website. The homepage enables users to search for the latest observation of specific taxa across different countries. Users can refine their search by applying filters based on taxon name, taxonomic rank, and country.
