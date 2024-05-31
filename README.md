@@ -24,11 +24,11 @@ The GBIF data is not perfect and contains errors and biases. The data is only as
 
 - We do not filter for data quality, and the data might contain errors, misidentifications, and outdated records.
 - We do not filter for data providers. Some data providers do upload unverified data (one example we found following dataset [gbif.org/dataset/6ac3f774-d9fb-4796-b3e9-92bf6c81c084](https://www.gbif.org/dataset/6ac3f774-d9fb-4796-b3e9-92bf6c81c084)).
-- We use "Preserved Specimen" as the event date can be the collection date but this assumption is not always true. The event date is sometimes the collection date. Even more problematic if fossils are marked as "Preserved Specimen" as example *Ursus spelaeus* [gbif.org/occurrence/3415351511](https://www.gbif.org/occurrence/3415351511).
+- We use "Preserved Specimen" as the event date can be the observation date but this assumption is not always true. The event date is sometimes the collection date of relict fragments. Even more problematic if fossils are marked as "Preserved Specimen" as example *Ursus spelaeus* [gbif.org/occurrence/3415351511](https://www.gbif.org/occurrence/3415351511).
 
 #### Completeness
 
-- We don't do an exhaustive search for all taxa and only use the backbone taxonomy from GBIF. The backbone taxonomy is a consensus taxonomy and might not be up to date with the latest taxonomic changes.
+- We don't do an exhaustive search for all taxa and only use the backbone taxonomy from GBIF. The backbone taxonomy is a consensus taxonomy and might not be up to date with the latest taxonomic changes and we do not update frequently the backbone on our side.
 - To reduce query time and load on the gbif API, we take some shortcuts when searching for taxa/countries see function `getCountries` [https://github.com/HannesOberreiter/gbif-extinct/blob/main/pkg/gbif/gbif.go](https://github.com/HannesOberreiter/gbif-extinct/blob/main/pkg/gbif/gbif.go).
 - Fetching of new data happens at random with a cron job, therefore the data you see on gbif extinct could be outdated by over a year.
 
@@ -39,8 +39,8 @@ Above the table you find a filter form. You can filter by taxon name, taxonomic 
 #### Table Columns
 
 - **Scientific Name**: The scientific name of the taxon. Link redirecting to GBIF taxon page.
-- **Country**: The country where the taxon was last observed, as two letters and a unicode flag.
-- **Latest Observation**: The latest observation of the taxon in the country. The date is formatted as "YYYY-MM-DD". Link redirecting to GBIF occurrence page. The date could differ from GBIF as there are multiple GBIF date formats including ranges, only years etc. For ranges we use the first part and if only part of the date is present we use the first of the year, month or day.
+- **Country**: The country where the taxon was last observed, as two iso code and a unicode flag.
+- **Latest Observation**: The latest observation/occurence of the taxon in the country. The date is formatted as "YYYY-MM-DD". Link redirecting to GBIF occurrence page. The date could differ from GBIF as there are multiple GBIF date formats including ranges, only years etc. For ranges we use the first part and if only part of the date is present we use the first of the year, month or day.
 - **~Years**: The years since the last observation. The years are calculated from the current date and the latest observation date.
 - **Last Fetched**: The date when the data was last fetched from GBIF. The date is formatted as "YYYY-MM-DD". You can click on the date to force a new fetch of the data.
 - **Synonym**: The synonym of the taxon. Link redirecting to GBIF taxon page.
@@ -48,7 +48,7 @@ Above the table you find a filter form. You can filter by taxon name, taxonomic 
 
 ## Development
 
-The project is open-source and contributions are welcome [github.com/HannesOberreiter/gbif-extinct](https://github.com/HannesOberreiter/gbif-extinct). The project is written in Go and uses Echo as a web framework. HTMX and Tailwind CSS and templ are used for the frontend. The database is DuckDB as it can be deployed as binary inside the go application.
+The project is open-source and contributions are welcome [github.com/HannesOberreiter/gbif-extinct](https://github.com/HannesOberreiter/gbif-extinct). The project is written in Go and uses Echo as a web framework. HTMX, Tailwind CSS and templ are used to build the frontend. As database we use DuckDB as it can be deployed as binary inside the go application and offers fast self-joining queries.
 
 ### Pre-requisites
 
