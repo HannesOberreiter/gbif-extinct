@@ -74,7 +74,7 @@ func UpdateConfig(config Config) {
 }
 
 // FetchLatest fetches the latest observations of a taxon from the GBIF API
-func FetchLatest(taxonID string) []LatestObservation {
+func FetchLatest(taxonID string) *[]LatestObservation {
 	slog.Info("Fetching latest observations from gbif", "taxonID", taxonID)
 	years := getYears(taxonID)
 	if len(years) == 0 {
@@ -84,7 +84,7 @@ func FetchLatest(taxonID string) []LatestObservation {
 	countries := getCountries(taxonID, years)
 
 	baseUrl := endpoint + "?limit=" + fmt.Sprint(limit) + "&" + basisOfRecord + "&" + occurrenceStatus + "&" + "taxonKey=" + taxonID
-	var result []LatestObservation
+	var result = &[]LatestObservation{}
 	for key, year := range countries {
 		i := 0
 		var observations []LatestObservation
@@ -150,7 +150,7 @@ func FetchLatest(taxonID string) []LatestObservation {
 			return observations[b].ObservationDate < observations[a].ObservationDate
 		})
 		if len(observations) > 0 {
-			result = append(result, observations[0])
+			*result = append(*result, observations[0])
 		}
 
 	}
@@ -161,10 +161,10 @@ func FetchLatest(taxonID string) []LatestObservation {
 // SaveObservation saves the latest observation for each taxon
 // It first clears the old observations for each taxon before inserting the new ones
 // to improve performance each insert contains alls new observations for this taxa at once
-func SaveObservation(observation [][]LatestObservation, db *sql.DB) {
-	slog.Info("Updating observations", "taxa", len(observation))
+func SaveObservation(observation *[][]LatestObservation, db *sql.DB) {
+	slog.Info("Updating observations", "taxa", len(*observation))
 	const stmt = "INSERT INTO observations (ObservationID, TaxonID, CountryCode, ObservationDate, ObservationDateOriginal) VALUES"
-	for _, res := range observation {
+	for _, res := range *observation {
 		var insertString []string
 		clearOldObservations(db, res[0].TaxonID)
 		slog.Info("Inserting new for taxaId", "observations", len(res), "taxaId", res[0].TaxonID)

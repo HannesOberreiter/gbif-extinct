@@ -33,11 +33,11 @@ func TestFetchLatest(t *testing.T) {
 	if res == nil {
 		t.Errorf("got %v, wanted %v", res, "not nil")
 	}
-	if len(res) == 0 {
-		t.Errorf("got %d, wanted < %d", len(res), 1)
+	if len(*res) == 0 {
+		t.Errorf("got %d, wanted < %d", len(*res), 1)
 	}
-	if res[0].TaxonID != id {
-		t.Errorf("got %s, wanted %s", res[0].TaxonID, id)
+	if (*res)[0].TaxonID != id {
+		t.Errorf("got %s, wanted %s", (*res)[0].TaxonID, id)
 	}
 
 	res = FetchLatest("123456")
@@ -56,8 +56,8 @@ func TestSaveObservations(t *testing.T) {
 		CountryCode:             "AT",
 	}
 
-	var observations [][]LatestObservation
-	observations = append(observations, []LatestObservation{observation})
+	var observations = &[][]LatestObservation{}
+	*observations = append(*observations, []LatestObservation{observation})
 
 	SaveObservation(observations, internal.DB)
 
