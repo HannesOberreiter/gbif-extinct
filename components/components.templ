@@ -64,7 +64,7 @@ func CalculatePages(counts queries.Counts, q queries.Query) PagesString {
 }
 
 
-type TableRows []queries.TableRow
+type TableRows *queries.TableRows
 
 var _aboutPage string;
 
@@ -241,7 +241,7 @@ templ Table(rows TableRows, q queries.Query, counts queries.Counts, pages PagesS
                 </tr>
             </thead>
             <tbody>
-			    for _, row := range rows {
+			    for _, row := range rows.Rows {
                 	<tr class="hover:bg-gray-200 border-0">
                         <td class="text-left">
 							<a class="italic" href={ templ.URL("https://www.gbif.org/species/" + row.TaxonID)} target="_blank">

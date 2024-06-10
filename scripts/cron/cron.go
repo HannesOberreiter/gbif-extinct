@@ -23,17 +23,17 @@ func main() {
 		slog.Info("Fetching observations for outdated taxa", "taxa", ids)
 	}
 
-	var results [][]gbif.LatestObservation
+	var results = &[][]gbif.LatestObservation{}
 	for _, id := range ids {
 		gbif.UpdateLastFetchStatus(internal.DB, id)
 		res := gbif.FetchLatest(id)
 		if res == nil {
 			continue
 		}
-		results = append(results, res)
+		*results = append(*results, *res)
 	}
 
-	if len(results) == 0 {
+	if len(*results) == 0 {
 		slog.Info("No new observations found")
 		return
 	}

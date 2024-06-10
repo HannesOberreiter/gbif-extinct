@@ -29,7 +29,7 @@ func TestQuery(t *testing.T) {
 		SHOW_SYNONYMS: false,
 	}
 
-	counts := GetCounts(internal.DB, q)
+	counts := q.GetCounts(internal.DB)
 	if counts.TaxaCount != 1 {
 		t.Errorf("got %d, wanted %d", counts.TaxaCount, 1)
 	}
@@ -38,19 +38,19 @@ func TestQuery(t *testing.T) {
 		t.Errorf("got %d, wanted %d", counts.ObservationCount, 1)
 	}
 
-	table := GetTableData(internal.DB, q)
-	if len(table) != 1 {
-		t.Errorf("got %d, wanted %d", len(table), 1)
+	table := q.GetTableData(internal.DB)
+	if len(table.Rows) != 1 {
+		t.Errorf("got %d, wanted %d", len(table.Rows), 1)
 	}
 
 	q.SHOW_SYNONYMS = true
-	table = GetTableData(internal.DB, q)
-	if len(table) != 2 {
-		t.Errorf("got %d, wanted %d", len(table), 2)
+	table = q.GetTableData(internal.DB)
+	if len(table.Rows) != 2 {
+		t.Errorf("got %d, wanted %d", len(table.Rows), 2)
 	}
 
-	if table[0].TaxonID != DemoTaxa[0] {
-		t.Errorf("got %s, wanted %s", table[0].TaxonID, DemoTaxa[0])
+	if table.Rows[0].TaxonID != DemoTaxa[0] {
+		t.Errorf("got %s, wanted %s", table.Rows[0].TaxonID, DemoTaxa[0])
 	}
 
 }
@@ -83,8 +83,8 @@ func TestConvertCSV(t *testing.T) {
 		SEARCH:        "Urocerus gigas",
 	}
 
-	table := GetTableData(internal.DB, q)
-	csv := CreateCSV(table)
+	table := q.GetTableData(internal.DB)
+	csv := table.CreateCSV()
 	/* Header */
 	if !strings.Contains(csv, "TaxonID,ScientificName") {
 		t.Errorf("got %s, wanted %s", csv, "TaxonID,ScientificName")

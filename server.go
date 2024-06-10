@@ -105,11 +105,11 @@ type Payload struct {
 /* Pages */
 func index(c echo.Context) error {
 	q := buildQuery(c)
-	counts := queries.GetCounts(internal.DB, q)
+	counts := q.GetCounts(internal.DB)
 
 	return render(c,
 		http.StatusAccepted,
-		components.PageTable(queries.GetTableData(internal.DB, q), q, counts, components.CalculatePages(counts, q), cacheBuster))
+		components.PageTable(q.GetTableData(internal.DB), q, counts, components.CalculatePages(counts, q), cacheBuster))
 
 }
 
@@ -127,8 +127,8 @@ func table(c echo.Context) error {
 	q := buildQuery(c)
 	querystring := c.QueryString()
 
-	table := queries.GetTableData(internal.DB, q)
-	counts := queries.GetCounts(internal.DB, q)
+	table := q.GetTableData(internal.DB)
+	counts := q.GetCounts(internal.DB)
 
 	if c.Request().Header.Get("HX-Request") == "" {
 		return c.JSON(http.StatusOK, table)
@@ -169,8 +169,8 @@ func fetch(c echo.Context) error {
 		return c.String(http.StatusNotFound, "No data found")
 	}
 
-	var results [][]gbif.LatestObservation
-	results = append(results, res)
+	var results = &[][]gbif.LatestObservation{}
+	*results = append(*results, *res)
 	gbif.SaveObservation(results, internal.DB)
 
 	c.Response().Header().Set("HX-Trigger", "filterSubmit")
@@ -181,8 +181,8 @@ func fetch(c echo.Context) error {
 func download(c echo.Context) error {
 
 	q := buildQuery(c)
-	table := queries.GetTableData(internal.DB, q, true)
-	csv := queries.CreateCSV(table)
+	table := q.GetTableData(internal.DB, true)
+	csv := table.CreateCSV()
 
 	filename := fmt.Sprintf("extinct-%s-%s.csv", time.Now().Format("2006-01-02"), strings.ReplaceAll(c.QueryString(), "&", "-"))
 
@@ -222,17 +222,17 @@ func cronFetch() {
 	slog.Info("Starting cron")
 
 	ids := gbif.GetOutdatedObservations(internal.DB)
-	var results [][]gbif.LatestObservation
+	var results = &[][]gbif.LatestObservation{}
 	for _, id := range ids {
 		gbif.UpdateLastFetchStatus(internal.DB, id)
 		res := gbif.FetchLatest(id)
 		if res == nil {
 			continue
 		}
-		results = append(results, res)
+		*results = append(*results, *res)
 	}
 
-	if len(results) == 0 {
+	if len(*results) == 0 {
 		slog.Info("No new observations found")
 		return
 	}

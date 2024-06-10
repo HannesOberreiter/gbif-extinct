@@ -50,6 +50,9 @@ type TableRow struct {
 	TaxonFamily  string
 	Taxa         string
 }
+type TableRows struct {
+	Rows []TableRow
+}
 
 var _taxonRankMap = map[string]string{"kingdom": "TaxonKingdom", "phylum": "TaxonPhylum", "class": "TaxonClass", "order": "TaxonOrder", "family": "TaxonFamily"}
 
@@ -112,7 +115,7 @@ func NewQuery(payload any) Query {
 }
 
 // Get the counts of taxa and observations based on the query
-func GetCounts(db *sql.DB, q Query) Counts {
+func (q Query) GetCounts(db *sql.DB) Counts {
 	var err error
 	var taxaCount int
 	var observationCount int
@@ -142,7 +145,7 @@ func GetCounts(db *sql.DB, q Query) Counts {
 }
 
 // Get the table data based on the query
-func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
+func (q Query) GetTableData(db *sql.DB, increaseLimit ...bool) *TableRows {
 	query := sq.Select(_selectArray...).From("taxa").JoinClause("LEFT OUTER JOIN observations ON observations.TaxonID = taxa.SynonymID").Limit(DefaultPageLimit)
 
 	if increaseLimit != nil && increaseLimit[0] {
@@ -182,7 +185,7 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 
 	rows, err := query.RunWith(db).Query()
 
-	var result []TableRow
+	var result = &TableRows{}
 	if err != nil {
 		slog.Error("Failed to get outdated observations", "error", err)
 		return result
@@ -219,17 +222,17 @@ func GetTableData(db *sql.DB, q Query, increaseLimit ...bool) []TableRow {
 			slog.Error("Failed to get outdated observations", "error", err)
 		}
 
-		result = append(result, row)
+		result.Rows = append(result.Rows, row)
 	}
 
 	return result
 }
 
 // Create a CSV string from the table data, this is used for exporting data
-func CreateCSV(rows []TableRow) string {
+func (rows *TableRows) CreateCSV() string {
 	var csv string
 	csv += strings.Join(_selectArray, ",") + "\n"
-	for _, row := range rows {
+	for _, row := range rows.Rows {
 		scientificName := ""
 		if row.ScientificName.Valid {
 			scientificName = row.ScientificName.String
