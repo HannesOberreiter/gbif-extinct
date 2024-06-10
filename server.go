@@ -242,8 +242,10 @@ func cronFetch() {
 
 // Utility function to render a template
 func render(c echo.Context, status int, t templ.Component) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 25*time.Second)
+	defer cancel()
 	c.Response().Writer.WriteHeader(status)
-	err := t.Render(context.Background(), c.Response().Writer)
+	err := t.Render(ctx, c.Response().Writer)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "failed to render response template")
 	}
