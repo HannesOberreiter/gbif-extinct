@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.3.0...v1.3.1) (2024-06-10)
+
+
+### Bug Fixes
+
+* :bug: add a timeout context to the render function ([#37](https://github.com/HannesOberreiter/gbif-extinct/issues/37)) ([1e86642](https://github.com/HannesOberreiter/gbif-extinct/commit/1e866427db865ba42d7042e184c1db297fddd2ce))
+
+
+### Performance Improvements
+
+* :zap: use points for large lists and refactor methods ([#35](https://github.com/HannesOberreiter/gbif-extinct/issues/35)) ([abc4ebe](https://github.com/HannesOberreiter/gbif-extinct/commit/abc4ebe31c80eef488f9bdfb6c68a886a7306660))
+
 ## [1.3.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.2.2...v1.3.0) (2024-05-21)
 
 
