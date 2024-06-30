@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.3.1...v1.4.0) (2024-06-30)
+
+
+### Features
+
+* ✨ add white paper and doi ([#38](https://github.com/HannesOberreiter/gbif-extinct/issues/38)) ([8da3297](https://github.com/HannesOberreiter/gbif-extinct/commit/8da3297f56bb08eabe4e218a6818e5e77a40cb96))
+
+
+### Bug Fixes
+
+* :bug: add missing build runtime ([#40](https://github.com/HannesOberreiter/gbif-extinct/issues/40)) ([d04246b](https://github.com/HannesOberreiter/gbif-extinct/commit/d04246ba6d921e412e915e68af4e60d3f4d5f592))
+
 ## [1.3.1](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.3.0...v1.3.1) (2024-06-10)
 
 
