@@ -1,6 +1,6 @@
 # GBIF - Extinct
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12599947.svg)](https://doi.org/10.5281/zenodo.12599947)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12599948.svg)](https://doi.org/10.5281/zenodo.12599948)
 
 <p align="center">
   <img width="180" height="180" src="/assets/icons/apple-touch-icon-180x180.png">
