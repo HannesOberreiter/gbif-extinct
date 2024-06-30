@@ -1,5 +1,7 @@
 # GBIF - Extinct
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12599947.svg)](https://doi.org/10.5281/zenodo.12599947)
+
 <p align="center">
   <img width="180" height="180" src="/assets/icons/apple-touch-icon-180x180.png">
 </p>
@@ -45,6 +47,25 @@ Above the table you find a filter form. You can filter by taxon name, taxonomic 
 - **Last Fetched**: The date when the data was last fetched from GBIF. The date is formatted as "YYYY-MM-DD". You can click on the date to force a new fetch of the data.
 - **Synonym**: The synonym of the taxon. Link redirecting to GBIF taxon page.
 - **Taxa**: The taxonomy of the taxon.
+
+## Reference and Citation
+
+You can download our white paper please see [gbif-extinct-white-paper](/assets/gbif-extinct-white-paper.pdf). If you use GBIF-Extinct in your research, please cite the following:
+
+> Oberreiter, H. und Duenser, A. (2024) „HannesOberreiter/gbif-extinct: v1.3.1“. Zenodo. doi: 10.5281/zenodo.12599948.
+
+```bibtex
+@software{oberreiter_2024_12599948,
+  author       = {Oberreiter, Hannes and Duenser, Anna},
+  title        = {HannesOberreiter/gbif-extinct: v1.3.1},
+  month        = jun,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v1.3.1},
+  doi          = {10.5281/zenodo.12599948},
+  url          = {https://doi.org/10.5281/zenodo.12599948}
+}
+```
 
 ## Development
 
