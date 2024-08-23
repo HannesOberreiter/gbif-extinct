@@ -203,7 +203,7 @@ func setupScheduler() {
 	var err error
 	scheduler, err = gocron.NewScheduler()
 	if err != nil {
-		slog.Error("Failed to create scheduler", err)
+		slog.Error(err.Error())
 	}
 
 	j, err := scheduler.NewJob(
