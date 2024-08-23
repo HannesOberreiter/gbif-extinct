@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.4.0...v1.4.1) (2024-08-23)
+
+
+### Bug Fixes
+
+* :bug: cleanup error ([433ca02](https://github.com/HannesOberreiter/gbif-extinct/commit/433ca025197533a2efd9ed1573e29f6c11d1b436))
+* :memo: always use specific version for DOI link ([#42](https://github.com/HannesOberreiter/gbif-extinct/issues/42)) ([48ef388](https://github.com/HannesOberreiter/gbif-extinct/commit/48ef388d04b8185d7511fad8ea5a1af4867a1fd4))
+
 ## [1.4.0](https://github.com/HannesOberreiter/gbif-extinct/compare/v1.3.1...v1.4.0) (2024-06-30)
 
 
